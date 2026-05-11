@@ -1,0 +1,9 @@
+.streamlit/secrets.toml
+data/raw/
+outputs/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.streamlit/cache/
+*.log
+*.tmp
