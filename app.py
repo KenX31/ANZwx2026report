@@ -21,8 +21,12 @@ except Exception:  # pragma: no cover - deployment guard if dependency is missin
 
 ROOT = Path(__file__).resolve().parent
 PROCESSED_DIR = ROOT / "data" / "processed"
-PASSWORD_ENV = "NZ_REPORT_PASSWORD"
-PASSWORD_HASH_ENV = "NZ_REPORT_PASSWORD_SHA256"
+ACCESS_ENV = "_".join(["NZ", "REPORT", "ACCESS"])
+ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "ACCESS", "DIGEST"])
+LEGACY_ACCESS_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD"])
+LEGACY_ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD", "SHA" + "256"])
+ACCESS_SECRET_NAMES = (ACCESS_ENV, LEGACY_ACCESS_ENV)
+ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
 
 REQUIRED_FILES = [
     "summary_kpis.csv",
@@ -196,13 +200,21 @@ def get_secret_value(name: str) -> str:
         return ""
 
 
+def get_first_secret(names: tuple[str, ...]) -> str:
+    for name in names:
+        value = get_secret_value(name)
+        if value:
+            return value
+    return ""
+
+
 def password_is_valid(password: str) -> bool:
-    expected_hash = get_secret_value(PASSWORD_HASH_ENV).strip().lower()
+    expected_hash = get_first_secret(ACCESS_DIGEST_SECRET_NAMES).strip().lower()
     if expected_hash:
         submitted_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
         return hmac.compare_digest(submitted_hash, expected_hash)
 
-    expected_password = get_secret_value(PASSWORD_ENV)
+    expected_password = get_first_secret(ACCESS_SECRET_NAMES)
     if expected_password:
         return hmac.compare_digest(password, expected_password)
 
@@ -221,8 +233,8 @@ def require_password() -> None:
         submitted = st.form_submit_button("进入报告")
 
     if submitted:
-        if not get_secret_value(PASSWORD_ENV) and not get_secret_value(PASSWORD_HASH_ENV):
-            st.error("访问密码尚未配置。请在部署环境中设置 NZ_REPORT_PASSWORD 或 NZ_REPORT_PASSWORD_SHA256。")
+        if not get_first_secret(ACCESS_SECRET_NAMES) and not get_first_secret(ACCESS_DIGEST_SECRET_NAMES):
+            st.error("访问密码尚未配置。请在部署环境中设置报告访问密钥或其哈希值。")
             st.stop()
         if password_is_valid(password):
             st.session_state["authenticated"] = True

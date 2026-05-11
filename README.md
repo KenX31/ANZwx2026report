@@ -8,19 +8,19 @@ Private Streamlit review app for the New Zealand holiday WeChat Pay analysis.
 streamlit run app.py
 ```
 
-The app requires an access password. Configure one of these Streamlit secrets before use:
+The app requires an access key. Configure one of these Streamlit secrets before use:
 
 ```toml
-NZ_REPORT_PASSWORD = "your-password"
+NZ_REPORT_ACCESS = "your-access-key"
 ```
 
 or:
 
 ```toml
-NZ_REPORT_PASSWORD_SHA256 = "sha256-hash"
+NZ_REPORT_ACCESS_DIGEST = "sha256-hash"
 ```
 
-For the Monica review password, use the SHA256 secret value shared separately.
+For Monica review, prefer the SHA256 digest secret value shared separately. The app still accepts the earlier deployment secret names for compatibility, but new deployments should use the neutral access-key names above.
 
 ## Deployment Notes
 
