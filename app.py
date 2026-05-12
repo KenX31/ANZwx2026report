@@ -698,7 +698,7 @@ def render_executive_insight_cards(
                 "title": "Auckland 承接基本盘，旅游城市增长更突出",
                 "body": (
                     f"Auckland 贡献 2026 五一 GMV 的 {fmt_pct(auckland_share)}，前 5 城市合计贡献 {fmt_pct(top5_share)}。"
-                    f"Queenstown GMV 同比 {fmt_signed_pct(queenstown_yoy)}，日均 GMV 较 4 月 baseline {fmt_signed_pct(queenstown_uplift)}，支持 visitor spend 恢复判断。"
+                    f"Queenstown GMV 同比 {fmt_signed_pct(queenstown_yoy)}，日均 GMV 较 4 月 baseline {fmt_signed_pct(queenstown_uplift)}，与外部旅游恢复背景方向一致。"
                 ),
             }
         )
@@ -718,13 +718,22 @@ def render_executive_insight_cards(
             frequency_txn_share = float(frequency_categories["txn_count"].sum() / total_txn) if total_txn else float("nan")
             top_major = str(major.iloc[0]["major_industry"]) if not major.empty else "头部行业"
             top_major_share = float(major.iloc[0]["gmv_cny"] / total_gmv) if total_gmv and not major.empty else float("nan")
+            tourism_mask = (
+                current_industry["major_industry"].isin(["礼品/珠宝/专卖", "交通出行类", "娱乐/休闲/旅游"])
+                | current_industry["industry"].astype(str).str.contains("免税|礼品|纪念|旅行社|旅游|景点|展览", regex=True, na=False)
+            )
+            tourism_gmv_share = (
+                float(pd.to_numeric(current_industry.loc[tourism_mask, "gmv_cny"], errors="coerce").fillna(0).sum() / total_gmv)
+                if total_gmv
+                else float("nan")
+            )
             cards.append(
                 {
                     "kicker": "行业结构",
-                    "title": "零售和游客消费主导 GMV，食品/餐饮贡献高频交易",
+                    "title": "零售与旅游相关场景 GMV 突出，商超/餐饮贡献高频交易",
                     "body": (
-                        f"{top_major} GMV 占比最高，为 {fmt_pct(top_major_share)}；前三大 major industry 合计贡献 {fmt_pct(top3_share)}。"
-                        f"食品/超市/便利店 + 餐饮类贡献 {fmt_pct(frequency_txn_share)} 的交易笔数，体现高频低客单层。"
+                        f"{top_major} GMV 占比最高，为 {fmt_pct(top_major_share)}；礼品、免税、旅行社/旅游运营、景点等旅游相关场景 GMV 合计贡献 {fmt_pct(tourism_gmv_share)}。"
+                        f"交易笔数主要来自商超和餐饮：食品/超市/便利店 + 餐饮类合计贡献 {fmt_pct(frequency_txn_share)}，体现高频低客单层。"
                     ),
                 }
             )
@@ -736,7 +745,7 @@ def render_executive_insight_cards(
         cards.append(
             {
                 "kicker": "头部商户",
-                "title": "KA 和游客零售商户拉动明显，GMV 集中度较高",
+                "title": "KA 与旅游相关零售场景拉动明显，GMV 集中度较高",
                 "body": (
                     f"前 10 商户贡献 2026 五一 GMV 的 {fmt_pct(top10_share)}，前 20 贡献 {fmt_pct(top20_share)}。"
                     "头部商户集中在 Auckland / Queenstown 的零售、礼品、免税、旅游和高端消费场景。"
@@ -1801,6 +1810,7 @@ with tabs[7]:
         - 核心排除：ZHENXING 机构已从报告输出中剔除。
         - 敏感数据：不导出原始用户标识；02 仅保留聚合后的 `active_user_cnt`。
         - 交易用户：02 活跃用户来自交易明细表 `uin` 去重，代表报告范围内产生 WeChat Pay 交易的付款用户，不代表游客人数或页面访问人数。
+        - 本报告不能区分本地人与游客；旅游相关场景判断仅来自城市、行业、商户类型和外部公开旅游数据的背景解释，不代表用户身份分类。
         - 对账要求：02 活跃用户聚合仅在其时段交易笔数和 GMV 与 01 报告口径对齐后展示。
         - 公平比较：同天数五一同比可看总 GMV；跨不同时长窗口使用日均 GMV / 日均交易笔数。
         """
