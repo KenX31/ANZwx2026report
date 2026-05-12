@@ -35,7 +35,6 @@ REQUIRED_FILES = [
     "industry_summary.csv",
     "top_merchants.csv",
     "coverage_summary.csv",
-    "material_summary.csv",
 ]
 
 OPTIONAL_FILES = [
@@ -44,8 +43,6 @@ OPTIONAL_FILES = [
     "period_catalog.csv",
     "global_summary_kpis.csv",
     "global_daily_trend.csv",
-    "global_material_summary.csv",
-    "material_period_summary.csv",
     "top_merchants_by_txn.csv",
     "top_merchants_by_frequency.csv",
     "global_fact_cards.csv",
@@ -96,7 +93,7 @@ STATUS_ZH = {
     "available": "已接入",
     "temporary": "临时口径",
     "pending": "待提取",
-    "missing_from_03_export": "03 物料导出缺失",
+    "missing_from_03_export": "03 辅助导出缺失",
 }
 
 COLUMN_LABELS_ZH = {
@@ -117,10 +114,10 @@ COLUMN_LABELS_ZH = {
     "active_merchants": "活跃商户数",
     "merchant_day_count": "活跃商户日",
     "merchant_frequency": "商户日均频次",
-    "active_users": "活跃用户数",
-    "avg_daily_active_users": "日均活跃用户数",
-    "avg_daily_user_frequency": "日均用户频次",
-    "daily_user_frequency": "每日用户频次",
+    "active_users": "活跃交易用户数",
+    "avg_daily_active_users": "日均活跃交易用户数",
+    "avg_daily_user_frequency": "日均用户交易频次",
+    "daily_user_frequency": "每日用户交易频次",
     "aov_cny": "客单价（元）",
     "business_city": "城市",
     "geo_match_rate": "城市匹配率",
@@ -131,13 +128,6 @@ COLUMN_LABELS_ZH = {
     "mcc_match_rate": "MCC 匹配率",
     "period_gmv_share": "时段 GMV 占比",
     "period_txn_share": "时段交易笔数占比",
-    "snapshot_count": "快照天数",
-    "avg_material_count": "平均物料数",
-    "avg_approved_material_count": "平均审核通过物料数",
-    "avg_scanned_material_count": "平均有扫码物料数",
-    "avg_all_pv_snapshot": "平均 PV 快照",
-    "avg_all_uv_snapshot": "平均 UV 快照",
-    "scanned_material_rate": "物料扫码覆盖率",
     "segment_name": "商户分组",
     "merchant_count": "商户数",
     "holiday_2026_gmv_cny": "2026 五一 GMV（元）",
@@ -629,7 +619,6 @@ def render_executive_insight_cards(
     industry_period_frame: pd.DataFrame,
     activation_frame: pd.DataFrame,
     top_frame: pd.DataFrame,
-    material_period_frame: pd.DataFrame,
     coverage_frame: pd.DataFrame,
     period_summary_frame: pd.DataFrame,
     compact: bool = False,
@@ -661,30 +650,14 @@ def render_executive_insight_cards(
     )
 
     if "active_users" in current_row and pd.notna(current_row.get("active_users")):
-        material_body = "03 material 数据未接入，物料扫码只能作为后续补充验证。"
-        if not material_period_frame.empty and "period_label" in material_period_frame:
-            material_plot = material_period_frame.copy()
-            current_material = material_plot[material_plot["period_label"].astype(str).eq("holiday_2026_labour")]
-            material_2025 = material_plot[material_plot["period_label"].astype(str).eq("holiday_2025_labour")]
-            if not current_material.empty:
-                row = current_material.iloc[0]
-                material_body = (
-                    "Material 作为辅助触达信号更温和："
-                    f"PV 快照均值较 4 月 baseline {fmt_signed_pct(row.get('avg_all_pv_snapshot_vs_baseline'))}，"
-                    f"UV 快照均值 {fmt_signed_pct(row.get('avg_all_uv_snapshot_vs_baseline'))}。"
-                )
-                if not material_2025.empty and material_2025.get("data_status", pd.Series(dtype="object")).astype(str).eq("missing_from_03_export").any():
-                    material_body += "03 缺 2025 Labour rows，因此不做 material Labour YoY 判断。"
-
         cards.append(
             {
-                "kicker": "用户与物料",
-                "title": "用户触达和使用频次是主驱动，物料信号保持稳定",
+                "kicker": "交易用户",
+                "title": "交易用户增长与使用频次共同支撑交易笔数提升",
                 "body": (
-                    f"2026 Labour 日均 active users 同比 {fmt_signed_pct(growth(current_row.get('avg_daily_active_users'), yoy_row.get('avg_daily_active_users')))}，"
-                    f"daily user frequency 同比 {fmt_signed_pct(growth(current_row.get('avg_daily_user_frequency'), yoy_row.get('avg_daily_user_frequency')))}，"
-                    f"AOV 同比 {fmt_signed_pct(growth(current_row.get('aov_cny'), yoy_row.get('aov_cny')))}；"
-                    f"{material_body}"
+                    f"2026 Labour 日均活跃交易用户数同比 {fmt_signed_pct(growth(current_row.get('avg_daily_active_users'), yoy_row.get('avg_daily_active_users')))}，"
+                    f"日均用户交易频次同比 {fmt_signed_pct(growth(current_row.get('avg_daily_user_frequency'), yoy_row.get('avg_daily_user_frequency')))}。"
+                    f"客单价同比 {fmt_signed_pct(growth(current_row.get('aov_cny'), yoy_row.get('aov_cny')))}，说明增长更适合从付款用户规模和交易频次解释。"
                 ),
             }
         )
@@ -1038,13 +1011,10 @@ industry = frames["industry_summary"]
 top_merchants = frames["top_merchants"]
 top_merchants_by_frequency = frames.get("top_merchants_by_frequency", frames.get("top_merchants_by_txn", pd.DataFrame()))
 coverage = frames["coverage_summary"]
-material = frames["material_summary"]
 
 period_summary = frames.get("period_summary", pd.DataFrame())
 period_daily = frames.get("period_daily", pd.DataFrame())
 period_catalog = frames.get("period_catalog", pd.DataFrame())
-global_material = frames.get("global_material_summary", pd.DataFrame())
-material_period = frames.get("material_period_summary", pd.DataFrame())
 insights = frames.get("insight_bullets", pd.DataFrame())
 public_context = frames.get("public_context", pd.DataFrame())
 merchant_activation_summary = frames.get("merchant_activation_summary", pd.DataFrame())
@@ -1083,7 +1053,6 @@ period_summary = period_summary.sort_values("sort_order" if "sort_order" in peri
 period_summary = localize_period_column(period_summary)
 period_daily = localize_period_column(period_daily)
 period_catalog = localize_period_column(period_catalog)
-material_period = localize_period_column(material_period)
 industry_period = localize_period_column(industry_period)
 available_summary = period_summary[period_summary["period_status"].astype(str).str.contains("available|temporary", regex=True, na=False)].copy()
 
@@ -1094,7 +1063,7 @@ baseline = get_period(period_summary, "baseline_2026_apr_non_labour")
 st.title("NZ 五一假期 WeChat Pay 热度报告")
 st.caption("日均交易为主指标，GMV 作为规模指标，客单价与商户频次共同解释交易结构。")
 
-tabs = st.tabs(["总览", "时段深挖", "城市", "行业", "用户与物料", "商户激活", "头部商户", "方法与边界"])
+tabs = st.tabs(["总览", "时段深挖", "城市", "行业", "交易用户", "商户激活", "头部商户", "方法与边界"])
 
 with tabs[0]:
     st.subheader("管理层视图")
@@ -1137,7 +1106,6 @@ with tabs[0]:
             industry_period,
             merchant_activation_summary,
             top_merchants,
-            material_period,
             coverage,
             period_summary,
             compact=True,
@@ -1478,85 +1446,49 @@ with tabs[3]:
 with tabs[4]:
     title_col, method_col = st.columns([1.25, 1])
     with title_col:
-        st.subheader("用户与物料信号")
+        st.subheader("交易用户信号")
         st.markdown(
-            '<div class="section-caption">把 02 用户聚合和 03 物料扫码快照放在一起看：用户说明真实交易触达，物料说明线下扫码素材的可见度与使用基础。</div>',
+            '<div class="section-caption">本页只展示报告范围内真实发生 WeChat Pay 交易的去重付款用户，不展示内部物料激励小程序的访问数据。</div>',
             unsafe_allow_html=True,
         )
     with method_col:
         render_method_card(
             "口径说明",
             [
-                "用户数据来自 02 聚合导出，只保留 OFFLINE/BOTH 商户口径，并与 01 交易范围对齐。",
+                "用户数据来自 02 聚合导出，基于交易明细表 uin 去重，只保留 OFFLINE/BOTH 商户口径，并与 01 交易范围对齐。",
                 "跨时段横向比较使用日均活跃用户；时段级去重活跃用户只用于同天数窗口对比。",
-                "日均用户频次 = 日均交易笔数 / 日均活跃用户，用来衡量每天每个活跃用户平均交易几次。",
-                "物料数据来自 03 每日物料快照；本页使用时段内快照均值，避免不同天数窗口直接累加。",
-                "滚动窗口快照指标不在本页展示，避免和假期窗口口径混淆。",
+                "日均用户交易频次 = 日均交易笔数 / 日均活跃交易用户数，用来衡量每天每个付款用户平均交易几次。",
+                "该用户数不代表游客人数、页面访问人数，或全球有礼小程序访问人数。",
+                "内部物料激励小程序访问数据暂不纳入当前报告，也不用于访问人数 / 交易人数渗透率计算。",
             ],
         )
 
     user_plot = available_summary.copy()
-    for col in ["active_users", "avg_daily_active_users", "avg_daily_user_frequency", "avg_daily_txn", "txn_count", "active_merchants"]:
+    for col in [
+        "active_users",
+        "avg_daily_active_users",
+        "avg_daily_user_frequency",
+        "avg_daily_txn",
+        "txn_count",
+        "active_merchants",
+        "aov_cny",
+    ]:
         user_plot[col] = pd.to_numeric(user_plot[col], errors="coerce") if col in user_plot else pd.NA
     user_plot = user_plot.sort_values("sort_order" if "sort_order" in user_plot else "period_label")
     user_ready = user_plot["avg_daily_active_users"].notna().any()
 
-    material_source = material_period.copy()
-    if material_source.empty and not global_material.empty and "period_label" in global_material.columns:
-        material_source = global_material.copy()
-        if "avg_daily_all_pv" in material_source:
-            material_source["avg_all_pv_snapshot"] = material_source["avg_daily_all_pv"]
-        if "avg_daily_all_uv" in material_source:
-            material_source["avg_all_uv_snapshot"] = material_source["avg_daily_all_uv"]
-        if "data_status" not in material_source:
-            material_source["data_status"] = "available"
-
-    if not material_source.empty:
-        material_source = material_source.sort_values("sort_order" if "sort_order" in material_source else "period_label").copy()
-        for col in [
-            "snapshot_count",
-            "avg_material_count",
-            "avg_approved_material_count",
-            "avg_scanned_material_count",
-            "avg_all_pv_snapshot",
-            "avg_all_uv_snapshot",
-            "scanned_material_rate",
-            "avg_all_pv_snapshot_vs_baseline",
-            "avg_all_uv_snapshot_vs_baseline",
-            "avg_scanned_material_count_vs_baseline",
-        ]:
-            material_source[col] = pd.to_numeric(material_source[col], errors="coerce") if col in material_source else pd.NA
-        if (
-            "avg_scanned_material_count" in material_source
-            and "period_label" in material_source
-            and material_source["avg_scanned_material_count_vs_baseline"].isna().all()
-        ):
-            baseline_scanned = material_source.loc[
-                material_source["period_label"].astype(str).eq("baseline_2026_apr_non_labour"),
-                "avg_scanned_material_count",
-            ]
-            if not baseline_scanned.empty and pd.notna(baseline_scanned.iloc[0]) and float(baseline_scanned.iloc[0]) != 0:
-                material_source["avg_scanned_material_count_vs_baseline"] = (
-                    material_source["avg_scanned_material_count"] / float(baseline_scanned.iloc[0]) - 1
-                )
-    material_plot = (
-        material_source[material_source["data_status"].astype(str).eq("available")].copy()
-        if not material_source.empty and "data_status" in material_source
-        else pd.DataFrame()
-    )
-
-    left, right = st.columns([1.05, 1])
+    left, right = st.columns([1.25, 0.8])
     with left:
-        st.markdown("#### 日均用户触达与交易频次")
+        st.markdown("#### 日均活跃交易用户与交易频次")
         if user_ready:
             user_metrics = st.columns(3)
             user_metrics[0].metric(
-                "日均活跃用户数",
+                "日均活跃交易用户数",
                 fmt_num(current.get("avg_daily_active_users")),
                 fmt_signed_pct(growth(current.get("avg_daily_active_users"), yoy.get("avg_daily_active_users"))),
             )
             user_metrics[1].metric(
-                "日均用户频次",
+                "日均用户交易频次",
                 fmt_num(current.get("avg_daily_user_frequency"), 2),
                 fmt_signed_pct(growth(current.get("avg_daily_user_frequency"), yoy.get("avg_daily_user_frequency"))),
             )
@@ -1569,129 +1501,61 @@ with tabs[4]:
             fig.add_bar(
                 x=user_plot["period_name"],
                 y=user_plot["avg_daily_active_users"],
-                name="日均活跃用户数",
+                name="日均活跃交易用户数",
                 marker_color="#2563EB",
             )
             fig.add_scatter(
                 x=user_plot["period_name"],
                 y=user_plot["avg_daily_user_frequency"],
-                name="日均用户频次",
+                name="日均用户交易频次",
                 mode="lines+markers",
                 marker_color="#D97706",
                 secondary_y=True,
             )
-            fig.update_layout(title_text="各时段日均用户触达与使用频次")
-            fig.update_yaxes(title_text="日均活跃用户数", secondary_y=False)
-            fig.update_yaxes(title_text="每活跃用户日均交易次数", secondary_y=True)
+            fig.update_layout(title_text="各时段日均交易用户规模与使用频次")
+            fig.update_yaxes(title_text="日均活跃交易用户数", secondary_y=False)
+            fig.update_yaxes(title_text="每活跃交易用户日均交易次数", secondary_y=True)
             fig.update_xaxes(categoryorder="array", categoryarray=list(user_plot["period_name"]), tickangle=-20)
             st.plotly_chart(chart_layout(fig, height=430), width="stretch")
         else:
             st.info("当前数据尚未接入 02 活跃用户聚合。")
 
     with right:
-        st.markdown("#### 物料扫码快照")
-        if material_plot.empty:
-            st.info("当前 03 导出没有返回物料扫码时段数据。")
+        st.markdown("#### 2026 五一交易用户概览")
+        if user_ready:
+            st.metric("时段活跃交易用户数", fmt_num(current.get("active_users")))
+            st.metric("客单价（元）", fmt_num(current.get("aov_cny"), 2))
+            st.metric("交易笔数", fmt_num(current.get("txn_count")))
+            render_method_card(
+                "解读边界",
+                [
+                    "活跃交易用户是付款用户去重，不是页面访问人数。",
+                    "用户频次已经按天数标准化，适合与国庆、春节和 4 月基线横向比较。",
+                    "时段活跃交易用户数受窗口天数影响，更适合用于两个 13 天五一窗口同比。",
+                ],
+            )
         else:
-            current_material = material_plot[material_plot["period_label"].astype(str).eq("holiday_2026_labour")]
-            if not current_material.empty:
-                row = current_material.iloc[0]
-                material_metrics = st.columns(3)
-                material_metrics[0].metric(
-                    "平均 PV 快照",
-                    fmt_num(row.get("avg_all_pv_snapshot")),
-                    f"{fmt_signed_pct(row.get('avg_all_pv_snapshot_vs_baseline'))} 较 4 月基线",
-                )
-                material_metrics[1].metric(
-                    "平均 UV 快照",
-                    fmt_num(row.get("avg_all_uv_snapshot")),
-                    f"{fmt_signed_pct(row.get('avg_all_uv_snapshot_vs_baseline'))} 较 4 月基线",
-                )
-                material_metrics[2].metric(
-                    "平均有扫码物料数",
-                    fmt_num(row.get("avg_scanned_material_count")),
-                    f"{fmt_signed_pct(row.get('avg_scanned_material_count_vs_baseline'))} 较 4 月基线",
-                )
+            st.info("当前数据尚未接入 02 活跃用户聚合。")
 
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-            fig.add_bar(
-                x=material_plot["period_name"],
-                y=material_plot["avg_all_pv_snapshot"],
-                name="平均 PV 快照",
-                marker_color="#0F766E",
-            )
-            fig.add_bar(
-                x=material_plot["period_name"],
-                y=material_plot["avg_all_uv_snapshot"],
-                name="平均 UV 快照",
-                marker_color="#60A5FA",
-            )
-            fig.add_scatter(
-                x=material_plot["period_name"],
-                y=material_plot["avg_scanned_material_count"],
-                name="平均有扫码物料数",
-                mode="lines+markers",
-                marker_color="#B45309",
-                secondary_y=True,
-            )
-            fig.update_layout(title_text="物料可见度与扫码物料基础")
-            fig.update_yaxes(title_text="PV / UV 快照", secondary_y=False)
-            fig.update_yaxes(title_text="有扫码物料数", secondary_y=True)
-            fig.update_xaxes(categoryorder="array", categoryarray=list(material_plot["period_name"]), tickangle=-20)
-            st.plotly_chart(chart_layout(fig, height=430), width="stretch")
-
-    table_left, table_right = st.columns(2)
-    with table_left:
-        st.markdown("##### 用户时段汇总")
-        user_display_cols = [
-            "period_name",
-            "avg_daily_active_users",
-            "avg_daily_user_frequency",
-            "txn_count",
-            "avg_daily_txn",
-            "active_users",
-            "active_merchants",
-        ]
-        user_display = user_plot[[col for col in user_display_cols if col in user_plot]].copy()
-        for col in ["avg_daily_active_users", "active_users", "txn_count", "avg_daily_txn", "active_merchants"]:
-            if col in user_display:
-                user_display[col] = user_display[col].map(lambda value: "N/A" if pd.isna(value) else f"{float(value):,.0f}")
-        if "avg_daily_user_frequency" in user_display:
-            user_display["avg_daily_user_frequency"] = user_display["avg_daily_user_frequency"].map(lambda value: "N/A" if pd.isna(value) else f"{float(value):,.2f}")
-        st.dataframe(display_table(user_display), hide_index=True, width="stretch")
-
-    with table_right:
-        st.markdown("##### 物料时段汇总")
-        if material_source.empty:
-            material_display = material.copy()
-            if "metric" in material_display:
-                material_display = material_display[~material_display["metric"].astype(str).str.contains("latest", case=False, na=False)]
-        else:
-            material_display_cols = [
-                "period_name",
-                "data_status",
-                "snapshot_count",
-                "avg_material_count",
-                "avg_approved_material_count",
-                "avg_scanned_material_count",
-                "avg_all_pv_snapshot",
-                "avg_all_uv_snapshot",
-                "scanned_material_rate",
-            ]
-            material_display = material_source[[col for col in material_display_cols if col in material_source]].copy()
-            for col in [
-                "snapshot_count",
-                "avg_material_count",
-                "avg_approved_material_count",
-                "avg_scanned_material_count",
-                "avg_all_pv_snapshot",
-                "avg_all_uv_snapshot",
-            ]:
-                if col in material_display:
-                    material_display[col] = material_display[col].map(lambda value: "N/A" if pd.isna(value) else f"{float(value):,.0f}")
-            if "scanned_material_rate" in material_display:
-                material_display["scanned_material_rate"] = material_display["scanned_material_rate"].apply(fmt_pct)
-        st.dataframe(display_table(material_display), hide_index=True, width="stretch")
+    st.markdown("##### 交易用户时段汇总")
+    user_display_cols = [
+        "period_name",
+        "avg_daily_active_users",
+        "avg_daily_user_frequency",
+        "avg_daily_txn",
+        "active_users",
+        "txn_count",
+        "aov_cny",
+        "active_merchants",
+    ]
+    user_display = user_plot[[col for col in user_display_cols if col in user_plot]].copy()
+    for col in ["avg_daily_active_users", "active_users", "txn_count", "avg_daily_txn", "active_merchants"]:
+        if col in user_display:
+            user_display[col] = user_display[col].map(lambda value: "N/A" if pd.isna(value) else f"{float(value):,.0f}")
+    for col in ["avg_daily_user_frequency", "aov_cny"]:
+        if col in user_display:
+            user_display[col] = user_display[col].map(lambda value: "N/A" if pd.isna(value) else f"{float(value):,.2f}")
+    st.dataframe(display_table(user_display), hide_index=True, width="stretch")
 
 with tabs[5]:
     title_col, method_col = st.columns([1.28, 1])
@@ -1905,7 +1769,7 @@ with tabs[7]:
 
         **当前数据状态**
 
-        - 选择已处理本地数据时，页面使用处理后的 `01` 商户日明细、`02` 用户聚合和 `03` 物料聚合。
+        - 选择已处理本地数据时，页面使用处理后的 `01` 商户日明细和 `02` 用户聚合；内部物料激励小程序访问数据不作为当前报告展示指标。
         - 城市、行业、头部商户、同店和商户激活视图均由完整 01 商户日明细在本地聚合生成。
         - 活跃用户状态：{active_user_status}。
         - 澳大利亚后续复用同一套分析结构，需另行完成分区、行数和 join 覆盖 probe 后再导出。
@@ -1915,7 +1779,7 @@ with tabs[7]:
         - `wechat_pay_overseas::t_dw_oversea_mch_manage_detail_day`：商户日交易汇总，提供交易笔数、GMV、商户入驻日和商户级时段对比。
         - `wechat_pay_overseas::t_dw_ol_submch_all_day`：新西兰商户范围和商户属性，按 `ds + submchid` 关联；提供 `merchant_country_code = '554'`、`business_type`、`stores_address`、MCC 和机构字段。
         - `wechat_pay_overseas::t_dwm_rate_trade_funds_profit_loss_day`：02 用户聚合的交易明细来源，只用于活跃用户数和对账检查，不替代本报告采用的 01 GMV。
-        - `wechat_pay_overseas::t_dwm_material_scan_statistic_day`：03 物料 PV/UV/物料数指标来源。
+        - 内部物料激励小程序访问数据与全球有礼访问口径未验证，当前报告不展示，也不用于转化或渗透率计算。
 
         **本地维表来源**
 
@@ -1936,6 +1800,7 @@ with tabs[7]:
         - 渠道范围：`business_type in ('OFFLINE', 'BOTH')`；线上-only 商户已从处理后报告输出中排除。
         - 核心排除：ZHENXING 机构已从报告输出中剔除。
         - 敏感数据：不导出原始用户标识；02 仅保留聚合后的 `active_user_cnt`。
+        - 交易用户：02 活跃用户来自交易明细表 `uin` 去重，代表报告范围内产生 WeChat Pay 交易的付款用户，不代表游客人数或页面访问人数。
         - 对账要求：02 活跃用户聚合仅在其时段交易笔数和 GMV 与 01 报告口径对齐后展示。
         - 公平比较：同天数五一同比可看总 GMV；跨不同时长窗口使用日均 GMV / 日均交易笔数。
         """
@@ -1959,11 +1824,9 @@ with tabs[7]:
                 "sql/01a_active_merchant_daily_trade_daily_probe.sql",
                 "sql/01_merchant_daily_trade_export_template.sql",
                 "sql/02_user_aggregate_export.sql",
-                "sql/03_material_scan_aggregate_export.sql",
                 "scripts/process_exports.py",
                 "data/raw/merchant_daily_trade_export_part_01.csv ... part_XX.csv",
                 "data/raw/user_aggregate_export.csv",
-                "data/raw/material_scan_aggregate_export.csv",
                 "data/processed/period_summary.csv",
                 "data/processed/period_daily.csv",
                 "data/processed/region_summary.csv",
