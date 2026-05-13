@@ -1,0 +1,6 @@
+﻿period_label,period_name,window_start,window_end,status
+holiday_2026_labour,2026 ????,2026-05-01,2026-05-01,available
+baseline_2026_current_pre,2026 ????,2026-05-02,2026-05-02,available
+holiday_2025_labour,2025 ????,2026-05-03,2026-05-03,available
+holiday_2025_golden_week,2025 ?????,2026-05-04,2026-05-04,available
+holiday_2026_cny,2026 ??,2026-05-05,2026-05-05,available

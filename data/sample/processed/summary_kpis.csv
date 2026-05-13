@@ -1,0 +1,6 @@
+﻿period_label,period_days,gmv_cny,txn_count,merchant_day_count,active_merchants,period_name,active_users,aov_cny,frequency,avg_daily_txn,avg_daily_gmv_cny,avg_daily_active_users,avg_daily_user_frequency,merchant_frequency,period_status,sort_order,vs_pre_gmv_growth,vs_yoy_gmv_growth
+holiday_2026_labour,1,10000.0,100,100,100,2026 ????,100,10000.0,1,100,10000.0,100,100.0,1,Sample period_status 1,1,0.05,0.05
+baseline_2026_current_pre,2,20000.0,200,200,200,2026 ????,200,20000.0,2,200,20000.0,200,200.0,2,Sample period_status 2,2,0.1,0.1
+holiday_2025_labour,3,30000.0,300,300,300,2025 ????,300,30000.0,3,300,30000.0,300,300.0,3,Sample period_status 3,3,0.15,0.15
+holiday_2025_golden_week,4,40000.0,400,400,400,2025 ?????,400,40000.0,4,400,40000.0,400,400.0,4,Sample period_status 4,4,0.2,0.2
+holiday_2026_cny,5,50000.0,500,500,500,2026 ??,500,50000.0,5,500,50000.0,500,500.0,5,Sample period_status 5,5,0.25,0.25

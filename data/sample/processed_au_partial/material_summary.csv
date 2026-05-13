@@ -1,0 +1,6 @@
+﻿metric,value,period_label
+Sample metric 1,1,holiday_2026_labour
+Sample metric 2,2,baseline_2026_current_pre
+Sample metric 3,3,holiday_2025_labour
+Sample metric 4,4,holiday_2025_golden_week
+Sample metric 5,5,holiday_2026_cny

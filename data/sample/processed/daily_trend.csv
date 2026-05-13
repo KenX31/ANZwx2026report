@@ -1,0 +1,6 @@
+﻿date,trade_date_ds,relative_day,period_label,gmv_cny,txn_count,active_merchant_day_rows,active_merchants,period_name,active_users,aov_cny,merchant_frequency,daily_user_frequency
+2026-05-01,1,1,holiday_2026_labour,10000.0,100,1,100,2026 ????,100,10000.0,1,1
+2026-05-02,2,2,baseline_2026_current_pre,20000.0,200,2,200,2026 ????,200,20000.0,2,2
+2026-05-03,3,3,holiday_2025_labour,30000.0,300,3,300,2025 ????,300,30000.0,3,3
+2026-05-04,4,4,holiday_2025_golden_week,40000.0,400,4,400,2025 ?????,400,40000.0,4,4
+2026-05-05,5,5,holiday_2026_cny,50000.0,500,5,500,2026 ??,500,50000.0,5,5

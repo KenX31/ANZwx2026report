@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+from io import BytesIO
+import json
 import os
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
 from plotly.subplots import make_subplots
 import streamlit as st
 
@@ -23,12 +27,18 @@ except Exception:  # pragma: no cover - deployment guard if dependency is missin
 ROOT = Path(__file__).resolve().parent
 PROCESSED_DIR = ROOT / "data" / "processed"
 PROCESSED_AU_PARTIAL_DIR = ROOT / "data" / "processed_au_partial"
+SAMPLE_DATA_DIR = ROOT / "data" / "sample"
 ACCESS_ENV = "_".join(["NZ", "REPORT", "ACCESS"])
 ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "ACCESS", "DIGEST"])
 LEGACY_ACCESS_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD"])
 LEGACY_ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD", "SHA" + "256"])
 ACCESS_SECRET_NAMES = (ACCESS_ENV, LEGACY_ACCESS_ENV)
 ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
+DEFAULT_DATA_PROJECT = "anz-labour-day-2026"
+DATASET_DIRS = {
+    "processed": PROCESSED_DIR,
+    "processed_au_partial": PROCESSED_AU_PARTIAL_DIR,
+}
 
 REQUIRED_FILES = [
     "summary_kpis.csv",
@@ -71,7 +81,7 @@ PERIOD_COLORS = {
 
 
 st.set_page_config(
-    page_title="新西兰假期支付热度报告",
+    page_title="澳新假期支付热度报告",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -217,7 +227,7 @@ def require_password() -> None:
     if st.session_state.get("authenticated"):
         return
 
-    st.title("新西兰假期支付热度报告")
+    st.title("澳新假期支付热度报告")
     st.caption("请输入访问密码后继续。")
 
     with st.form("password_form"):
@@ -398,23 +408,143 @@ st.markdown(
 )
 
 
-def data_ready(path: Path) -> bool:
-    return all((path / name).exists() for name in REQUIRED_FILES)
+class DataLoadError(RuntimeError):
+    pass
 
 
-def dataset_version(path: Path) -> float:
-    files = [path / name for name in [*REQUIRED_FILES, *OPTIONAL_FILES] if (path / name).exists()]
-    return max((file.stat().st_mtime for file in files), default=0.0)
+def get_data_backend() -> str:
+    return get_secret_value("DATA_BACKEND").strip().lower() or "local"
+
+
+def get_data_project() -> str:
+    return get_secret_value("DATA_PROJECT").strip() or DEFAULT_DATA_PROJECT
+
+
+def all_dataset_files() -> list[str]:
+    return list(dict.fromkeys([*REQUIRED_FILES, *OPTIONAL_FILES]))
+
+
+def local_dataset_path(dataset_name: str, backend: str) -> Path:
+    if backend == "sample":
+        return SAMPLE_DATA_DIR / dataset_name
+    return DATASET_DIRS[dataset_name]
+
+
+def local_dataset_version(dataset_name: str, backend: str) -> str:
+    path = local_dataset_path(dataset_name, backend)
+    files = [path / name for name in all_dataset_files() if (path / name).exists()]
+    latest_mtime = max((file.stat().st_mtime for file in files), default=0.0)
+    return f"{backend}:{dataset_name}:{latest_mtime}"
+
+
+def private_data_path(dataset_name: str, filename: str) -> str:
+    project = get_data_project().strip("/")
+    return f"projects/{project}/{dataset_name}/{filename}"
+
+
+def private_manifest_path() -> str:
+    project = get_data_project().strip("/")
+    return f"projects/{project}/manifest.json"
+
+
+def github_private_bytes(path: str) -> bytes | None:
+    token = get_secret_value("DATA_GITHUB_TOKEN").strip()
+    repo = get_secret_value("DATA_GITHUB_REPO").strip()
+    ref = get_secret_value("DATA_GITHUB_REF").strip() or "main"
+    if not token or not repo:
+        raise DataLoadError("私有数据仓尚未配置，请设置 DATA_GITHUB_TOKEN 和 DATA_GITHUB_REPO。")
+
+    encoded_path = quote(path, safe="/")
+    url = f"https://api.github.com/repos/{repo}/contents/{encoded_path}"
+    headers = {
+        "Accept": "application/vnd.github.raw",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    try:
+        response = requests.get(url, headers=headers, params={"ref": ref}, timeout=20)
+    except requests.RequestException as exc:
+        raise DataLoadError("无法连接私有数据仓，请检查部署网络和 GitHub 只读 token。") from exc
+
+    if response.status_code == 404:
+        return None
+    if response.status_code in {401, 403}:
+        raise DataLoadError("私有数据仓认证失败，请检查 DATA_GITHUB_TOKEN 的只读权限。")
+    if not response.ok:
+        raise DataLoadError(f"私有数据仓读取失败，GitHub 返回 HTTP {response.status_code}。")
+    return response.content
+
+
+def private_manifest_version() -> str:
+    manifest = github_private_bytes(private_manifest_path())
+    if not manifest:
+        return ""
+    try:
+        payload = json.loads(manifest.decode("utf-8-sig"))
+        return str(payload.get("version", ""))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+
+
+def dataset_version(dataset_name: str) -> str:
+    backend = get_data_backend()
+    configured_version = get_secret_value("DATA_VERSION").strip()
+    if configured_version:
+        return f"{backend}:{get_data_project()}:{configured_version}:{dataset_name}"
+    if backend == "github_private":
+        manifest_version = private_manifest_version()
+        ref = get_secret_value("DATA_GITHUB_REF").strip() or "main"
+        return f"{backend}:{get_data_project()}:{ref}:{manifest_version}:{dataset_name}"
+    if backend in {"local", "sample"}:
+        return local_dataset_version(dataset_name, backend)
+    raise DataLoadError(f"不支持的数据源类型：{backend}")
 
 
 @st.cache_data(show_spinner=False)
-def load_dataset(path_text: str, data_version: float) -> dict[str, pd.DataFrame]:
-    path = Path(path_text)
-    return {
-        name.replace(".csv", ""): pd.read_csv(path / name, encoding="utf-8-sig")
-        for name in [*REQUIRED_FILES, *OPTIONAL_FILES]
-        if (path / name).exists()
-    }
+def load_dataset(dataset_name: str, data_version: str) -> dict[str, pd.DataFrame]:
+    backend = get_data_backend()
+    frames: dict[str, pd.DataFrame] = {}
+
+    if backend in {"local", "sample"}:
+        path = local_dataset_path(dataset_name, backend)
+        for name in all_dataset_files():
+            file_path = path / name
+            if file_path.exists():
+                frames[name.replace(".csv", "")] = pd.read_csv(file_path, encoding="utf-8-sig")
+        return frames
+
+    if backend == "github_private":
+        for name in all_dataset_files():
+            content = github_private_bytes(private_data_path(dataset_name, name))
+            if content is not None:
+                frames[name.replace(".csv", "")] = pd.read_csv(BytesIO(content), encoding="utf-8-sig")
+        return frames
+
+    raise DataLoadError(f"不支持的数据源类型：{backend}")
+
+
+def load_dataset_or_stop(dataset_name: str) -> dict[str, pd.DataFrame]:
+    try:
+        return load_dataset(dataset_name, dataset_version(dataset_name))
+    except DataLoadError as exc:
+        st.error(str(exc))
+        st.stop()
+
+
+def require_dataset_files(frames: dict[str, pd.DataFrame], filenames: list[str], message: str) -> None:
+    missing = [name for name in filenames if name.replace(".csv", "") not in frames]
+    if missing:
+        st.error(f"{message} 缺失文件：{', '.join(missing)}")
+        st.stop()
+
+
+def data_source_label(dataset_name: str, default_label: str) -> str:
+    backend = get_data_backend()
+    if backend == "github_private":
+        return f"{default_label}（私有数据仓：{get_data_project()}）"
+    if backend == "sample":
+        return f"{default_label}（脱敏样例数据）"
+    return default_label
 
 
 def fmt_money(value: float | int | None) -> str:
@@ -788,12 +918,8 @@ def render_executive_insight_cards(
     )
 
 
-def select_data_dir() -> tuple[Path, str]:
-    processed_ready = data_ready(PROCESSED_DIR)
-    if not processed_ready:
-        st.error("已处理聚合数据不完整，请先运行本地处理脚本并确认输出。")
-        st.stop()
-    return PROCESSED_DIR, "已处理聚合数据"
+def select_dataset() -> tuple[str, str]:
+    return "processed", data_source_label("processed", "已处理聚合数据")
 
 
 def get_period(period_summary: pd.DataFrame, label: str) -> pd.Series:
@@ -1153,24 +1279,24 @@ require_password()
 country = st.sidebar.selectbox("国家/地区", ["新西兰", "澳大利亚"], index=0)
 
 if country == "澳大利亚":
-    if not PROCESSED_AU_PARTIAL_DIR.exists():
-        st.error("澳大利亚聚合预览数据尚未生成，请先运行 scripts/process_au_partial_exports.py。")
-        st.stop()
-    au_frames = load_dataset(str(PROCESSED_AU_PARTIAL_DIR), dataset_version(PROCESSED_AU_PARTIAL_DIR))
+    au_frames = load_dataset_or_stop("processed_au_partial")
+    require_dataset_files(
+        au_frames,
+        ["summary_kpis.csv", "daily_trend.csv", "period_summary.csv", "period_daily.csv"],
+        "澳大利亚聚合预览数据不完整。",
+    )
+    au_source_label = data_source_label("processed_au_partial", "AU 聚合预览数据")
     st.sidebar.markdown("### 范围")
     st.sidebar.write("当前为澳大利亚聚合预览：01a + 02 + 03。")
     st.sidebar.write("完整城市、行业和商户视图等待 01 明细审批完成后启用。")
     st.sidebar.markdown("---")
-    st.sidebar.caption("当前使用：AU 聚合预览数据")
-    render_au_partial_report(au_frames, "AU 聚合预览数据")
+    st.sidebar.caption(f"当前使用：{au_source_label}")
+    render_au_partial_report(au_frames, au_source_label)
     st.stop()
 
-data_dir, source_label = select_data_dir()
-frames = load_dataset(str(data_dir), dataset_version(data_dir))
-
-if not all(key in frames for key in [name.replace(".csv", "") for name in REQUIRED_FILES]):
-    st.error("报告数据不完整，请先处理云端导出并确认聚合输出。")
-    st.stop()
+dataset_name, source_label = select_dataset()
+frames = load_dataset_or_stop(dataset_name)
+require_dataset_files(frames, REQUIRED_FILES, "报告数据不完整。")
 
 st.sidebar.markdown("### 范围")
 st.sidebar.write("当前报告聚焦新西兰五一假期与相关对比窗口。")

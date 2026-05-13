@@ -1,0 +1,5 @@
+﻿activation_segment,merchant_count,holiday_2025_gmv_cny,holiday_2026_gmv_cny,holiday_2025_txn_count,holiday_2026_txn_count,avg_2026_active_days,gmv_yoy_delta_cny,txn_yoy_delta,current_gmv_share,current_txn_share,sort_order
+Sample activation_segment 1,100,10000.0,10000.0,100,100,100.0,10000.0,100,0.05,0.05,1
+Sample activation_segment 2,200,20000.0,20000.0,200,200,200.0,20000.0,200,0.1,0.1,2
+Sample activation_segment 3,300,30000.0,30000.0,300,300,300.0,30000.0,300,0.15,0.15,3
+Sample activation_segment 4,400,40000.0,40000.0,400,400,400.0,40000.0,400,0.2,0.2,4

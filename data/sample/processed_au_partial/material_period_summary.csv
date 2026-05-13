@@ -1,0 +1,6 @@
+﻿period_label,period_name,status,snapshot_count,avg_material_count,avg_approved_material_count,avg_scanned_material_count,avg_all_pv_snapshot,avg_all_uv_snapshot,sort_order,days,data_status,scanned_material_rate,avg_all_pv_snapshot_vs_baseline,avg_all_uv_snapshot_vs_baseline,avg_scanned_material_count_vs_baseline
+holiday_2026_labour,2026 ????,available,100,100,100,100,100,100,1,1,available,0.05,100,100,100
+baseline_2026_current_pre,2026 ????,available,200,200,200,200,200,200,2,2,available,0.1,200,200,200
+holiday_2025_labour,2025 ????,available,300,300,300,300,300,300,3,3,available,0.15,300,300,300
+holiday_2025_golden_week,2025 ?????,available,400,400,400,400,400,400,4,4,available,0.2,400,400,400
+holiday_2026_cny,2026 ??,available,500,500,500,500,500,500,5,5,available,0.25,500,500,500

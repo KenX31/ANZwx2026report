@@ -1,5 +1,7 @@
 .streamlit/secrets.toml
 data/raw/
+data/processed/
+data/processed_au_partial/
 outputs/
 __pycache__/
 *.py[cod]

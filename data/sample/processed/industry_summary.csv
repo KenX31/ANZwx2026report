@@ -1,0 +1,6 @@
+﻿major_industry,industry,gmv_cny,txn_count,active_merchants,mcc_match_rate,yoy_gmv_growth,pre_uplift
+Sample Industry 1,Sample Industry 1,10000.0,100,100,0.05,0.05,1
+Sample Industry 2,Sample Industry 2,20000.0,200,200,0.1,0.1,2
+Sample Industry 3,Sample Industry 3,30000.0,300,300,0.15,0.15,3
+Sample Industry 4,Sample Industry 4,40000.0,400,400,0.2,0.2,4
+Sample Industry 5,Sample Industry 5,50000.0,500,500,0.25,0.25,5

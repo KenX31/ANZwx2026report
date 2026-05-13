@@ -1,0 +1,6 @@
+﻿period_label,major_industry,industry,gmv_cny,txn_count,merchant_day_count,active_merchants,mcc_match_rate,period_name,period_status,sort_order,days,avg_daily_gmv_cny,avg_daily_txn,merchant_frequency,period_gmv_cny,period_txn_count,period_gmv_share,period_txn_share
+holiday_2026_labour,Sample Industry 1,Sample Industry 1,10000.0,100,100,100,0.05,2026 ????,Sample period_status 1,1,1,10000.0,100,1,10000.0,100,0.05,0.05
+baseline_2026_current_pre,Sample Industry 2,Sample Industry 2,20000.0,200,200,200,0.1,2026 ????,Sample period_status 2,2,2,20000.0,200,2,20000.0,200,0.1,0.1
+holiday_2025_labour,Sample Industry 3,Sample Industry 3,30000.0,300,300,300,0.15,2025 ????,Sample period_status 3,3,3,30000.0,300,3,30000.0,300,0.15,0.15
+holiday_2025_golden_week,Sample Industry 4,Sample Industry 4,40000.0,400,400,400,0.2,2025 ?????,Sample period_status 4,4,4,40000.0,400,4,40000.0,400,0.2,0.2
+holiday_2026_cny,Sample Industry 5,Sample Industry 5,50000.0,500,500,500,0.25,2026 ??,Sample period_status 5,5,5,50000.0,500,5,50000.0,500,0.25,0.25

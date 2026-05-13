@@ -1,0 +1,6 @@
+﻿frequency_rank,merchant_display,business_city,industry,gmv_cny,txn_count,merchant_day_count,active_days,avg_daily_gmv_cny,avg_daily_txn,txn_per_merchant_day,aov_cny,note
+1,Merchant A,Sample City 1,Sample Industry 1,10000.0,100,100,1,10000.0,100,100,10000.0,Synthetic sample only
+2,Merchant B,Sample City 2,Sample Industry 2,20000.0,200,200,2,20000.0,200,200,20000.0,Synthetic sample only
+3,Merchant C,Sample City 3,Sample Industry 3,30000.0,300,300,3,30000.0,300,300,30000.0,Synthetic sample only
+4,Merchant D,Sample City 4,Sample Industry 4,40000.0,400,400,4,40000.0,400,400,40000.0,Synthetic sample only
+5,Merchant E,Sample City 5,Sample Industry 5,50000.0,500,500,5,50000.0,500,500,50000.0,Synthetic sample only
