@@ -6,6 +6,7 @@ import os
 from html import escape
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -21,6 +22,7 @@ except Exception:  # pragma: no cover - deployment guard if dependency is missin
 
 ROOT = Path(__file__).resolve().parent
 PROCESSED_DIR = ROOT / "data" / "processed"
+PROCESSED_AU_PARTIAL_DIR = ROOT / "data" / "processed_au_partial"
 ACCESS_ENV = "_".join(["NZ", "REPORT", "ACCESS"])
 ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "ACCESS", "DIGEST"])
 LEGACY_ACCESS_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD"])
@@ -992,7 +994,176 @@ def render_period_bubble_plotly(bubble_data: pd.DataFrame) -> object:
     )
 
 
+def render_au_partial_report(frames: dict[str, pd.DataFrame], source_label: str) -> None:
+    period_summary = frames.get("period_summary", pd.DataFrame()).copy()
+    period_daily = frames.get("period_daily", pd.DataFrame()).copy()
+    material_period = frames.get("material_period_summary", pd.DataFrame()).copy()
+    partial_status = frames.get("partial_status", pd.DataFrame()).copy()
+
+    if period_summary.empty or period_daily.empty:
+        st.error("澳大利亚聚合预览数据不完整，请先运行 scripts/process_au_partial_exports.py。")
+        st.stop()
+
+    period_summary = localize_period_column(period_summary).sort_values("sort_order")
+    period_daily = localize_period_column(period_daily)
+    material_period = localize_period_column(material_period)
+
+    current = get_period(period_summary, "holiday_2026_labour")
+    yoy = get_period(period_summary, "holiday_2025_labour")
+    baseline = get_period(period_summary, "baseline_2026_apr_non_labour")
+
+    st.title("AU 五一假期 WeChat Pay 热度报告（聚合预览）")
+    st.caption("当前使用 AU 01a 日聚合、02 交易用户聚合、03 物料聚合；城市、行业、头部商户和商户激活等待完整 01 明细审批后启用。")
+    st.warning("这是澳大利亚聚合预览版。部分 02 交易表口径与 01a merchant-day 聚合仍有小幅差异，最终发布前需要用完整 01 明细重新处理和复核。")
+
+    tabs = st.tabs(["总览", "时段深挖", "交易用户与物料", "方法与边界"])
+
+    with tabs[0]:
+        st.subheader("管理层视图")
+        cols = st.columns(4)
+        cols[0].metric("2026 五一日均交易", fmt_num(current.get("avg_daily_txn")), fmt_signed_pct(current.get("avg_daily_txn") / yoy.get("avg_daily_txn") - 1 if yoy.get("avg_daily_txn") else np.nan))
+        cols[1].metric("2026 五一日均 GMV", fmt_money(current.get("avg_daily_gmv_cny")), fmt_signed_pct(current.get("avg_daily_gmv_cny") / yoy.get("avg_daily_gmv_cny") - 1 if yoy.get("avg_daily_gmv_cny") else np.nan))
+        cols[2].metric("日均活跃用户", fmt_num(current.get("avg_daily_active_users")), fmt_signed_pct(current.get("avg_daily_active_users") / yoy.get("avg_daily_active_users") - 1 if yoy.get("avg_daily_active_users") else np.nan))
+        cols[3].metric("AOV", fmt_money(current.get("aov_cny")), fmt_signed_pct(current.get("aov_cny") / yoy.get("aov_cny") - 1 if yoy.get("aov_cny") else np.nan))
+
+        left, right = st.columns([1.25, 1])
+        with left:
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            fig.add_bar(
+                x=period_summary["period_name"],
+                y=period_summary["avg_daily_txn"],
+                name="日均交易笔数",
+                marker_color="#0F766E",
+            )
+            fig.add_scatter(
+                x=period_summary["period_name"],
+                y=period_summary["avg_daily_active_users"],
+                name="日均活跃用户",
+                mode="lines+markers",
+                marker_color="#2563EB",
+                secondary_y=True,
+            )
+            fig.update_yaxes(title_text="日均交易笔数", secondary_y=False)
+            fig.update_yaxes(title_text="日均活跃用户", secondary_y=True)
+            fig.update_layout(title="AU 各时段交易强度与用户规模")
+            st.plotly_chart(chart_layout(fig, height=420), width="stretch")
+        with right:
+            table = period_summary[
+                [
+                    "period_name",
+                    "days",
+                    "avg_daily_txn",
+                    "avg_daily_gmv_cny",
+                    "avg_daily_active_users",
+                    "aov_cny",
+                    "txn_vs_02_diff",
+                ]
+            ].copy()
+            st.markdown("#### 时段汇总")
+            st.dataframe(display_table(table), hide_index=True, width="stretch")
+            st.caption(f"当前使用：{source_label}")
+
+    with tabs[1]:
+        st.subheader("时段深挖")
+        bubble_data = period_summary.copy()
+        event = render_period_bubble_plotly(bubble_data)
+        points = selected_points(event)
+        selected_label = "holiday_2026_labour"
+        if points and points[0].get("customdata"):
+            selected_label = points[0]["customdata"][0]
+        selected_daily = period_daily[period_daily["period_label"].eq(selected_label)].sort_values("trade_date_ds")
+        if selected_daily.empty:
+            selected_daily = period_daily[period_daily["period_label"].eq("holiday_2026_labour")].sort_values("trade_date_ds")
+        trend_fig = make_subplots(specs=[[{"secondary_y": True}]])
+        trend_fig.add_bar(x=selected_daily["date"], y=selected_daily["txn_count"], name="交易笔数", marker_color="#2563EB")
+        trend_fig.add_scatter(x=selected_daily["date"], y=selected_daily["gmv_cny"], name="GMV", mode="lines+markers", marker_color="#0F766E", secondary_y=True)
+        trend_fig.update_yaxes(title_text="交易笔数", secondary_y=False)
+        trend_fig.update_yaxes(title_text="GMV", secondary_y=True)
+        trend_fig.update_layout(title=f"{selected_daily['period_name'].iloc[0]} 每日走势")
+        st.plotly_chart(chart_layout(trend_fig, height=430), width="stretch")
+        st.dataframe(
+            display_table(selected_daily[["date", "txn_count", "gmv_cny", "active_merchants", "active_users", "aov_cny"]]),
+            hide_index=True,
+            width="stretch",
+        )
+
+    with tabs[2]:
+        st.subheader("交易用户与物料")
+        left, right = st.columns(2)
+        with left:
+            user_fig = px.bar(
+                period_summary,
+                x="period_name",
+                y="avg_daily_active_users",
+                color="avg_daily_user_frequency",
+                title="日均活跃用户与日均用户频次",
+                labels={"period_name": "", "avg_daily_active_users": "日均活跃用户", "avg_daily_user_frequency": "日均用户频次"},
+                color_continuous_scale=["#DBEAFE", "#1D4ED8"],
+            )
+            st.plotly_chart(chart_layout(user_fig, height=420), width="stretch")
+        with right:
+            if material_period.empty:
+                st.info("03 物料聚合暂无可展示数据。")
+            else:
+                material_available = material_period[material_period["data_status"].astype(str).str.contains("available", na=False)].copy()
+                material_fig = px.bar(
+                    material_available,
+                    x="period_name",
+                    y=["avg_all_pv_snapshot", "avg_all_uv_snapshot"],
+                    barmode="group",
+                    title="物料 PV / UV 快照均值",
+                    labels={"period_name": "", "value": "快照均值", "variable": "指标"},
+                )
+                st.plotly_chart(chart_layout(material_fig, height=420), width="stretch")
+        if not material_period.empty:
+            st.markdown("#### 物料 period 汇总")
+            st.dataframe(display_table(material_period), hide_index=True, width="stretch")
+
+    with tabs[3]:
+        st.subheader("方法与边界")
+        st.markdown(
+            """
+            - 当前 AU 预览只使用 `01a_active_merchant_daily_trade_daily_probe.csv`、`user_aggregate_export.csv` 和 `material_scan_aggregate_export.csv`。
+            - 可展示：period 汇总、每日趋势、活跃用户、AOV、物料 PV/UV/扫码物料快照。
+            - 暂不展示：城市、行业、Top merchants、same-store YoY、商户激活。这些需要完整 `01` merchant-day 明细。
+            - `active_merchants` 在当前页面表示每日活跃商户数；period-level 去重商户数需等待完整 01 明细。
+            - `txn_vs_02_diff` / `gmv_vs_02_diff` 用于提示 01a 与 02 交易表口径差异，最终版需用完整 01 明细复核。
+            """
+        )
+        if not partial_status.empty:
+            st.dataframe(partial_status, hide_index=True, width="stretch")
+        st.markdown("#### 当前文件")
+        st.code(
+            "\n".join(
+                [
+                    "data/raw/01a_active_merchant_daily_trade_daily_probe.csv",
+                    "data/raw/user_aggregate_export.csv",
+                    "data/raw/material_scan_aggregate_export.csv",
+                    "data/processed_au_partial/period_summary.csv",
+                    "data/processed_au_partial/period_daily.csv",
+                    "data/processed_au_partial/material_period_summary.csv",
+                ]
+            ),
+            language="text",
+        )
+
+
 require_password()
+
+country = st.sidebar.selectbox("国家/地区", ["新西兰", "澳大利亚"], index=0)
+
+if country == "澳大利亚":
+    if not PROCESSED_AU_PARTIAL_DIR.exists():
+        st.error("澳大利亚聚合预览数据尚未生成，请先运行 scripts/process_au_partial_exports.py。")
+        st.stop()
+    au_frames = load_dataset(str(PROCESSED_AU_PARTIAL_DIR), dataset_version(PROCESSED_AU_PARTIAL_DIR))
+    st.sidebar.markdown("### 范围")
+    st.sidebar.write("当前为澳大利亚聚合预览：01a + 02 + 03。")
+    st.sidebar.write("完整城市、行业和商户视图等待 01 明细审批完成后启用。")
+    st.sidebar.markdown("---")
+    st.sidebar.caption("当前使用：AU 聚合预览数据")
+    render_au_partial_report(au_frames, "AU 聚合预览数据")
+    st.stop()
 
 data_dir, source_label = select_data_dir()
 frames = load_dataset(str(data_dir), dataset_version(data_dir))
@@ -1001,17 +1172,11 @@ if not all(key in frames for key in [name.replace(".csv", "") for name in REQUIR
     st.error("报告数据不完整，请先处理云端导出并确认聚合输出。")
     st.stop()
 
-country = st.sidebar.selectbox("国家/地区", ["新西兰", "澳大利亚"], index=0)
 st.sidebar.markdown("### 范围")
 st.sidebar.write("当前报告聚焦新西兰五一假期与相关对比窗口。")
 st.sidebar.write("澳大利亚后续复用同一套 SQL、处理脚本和页面结构。")
 st.sidebar.markdown("---")
 st.sidebar.caption(f"当前使用：{source_label}")
-
-if country == "澳大利亚":
-    st.title("澳大利亚假期 WeChat Pay 热度报告")
-    st.info("澳大利亚数据入口已预留。后续完成分区、行数和 join 覆盖检查，并导入 AU 聚合数据后，可在此查看澳大利亚报告。")
-    st.stop()
 
 summary = frames["summary_kpis"]
 daily = frames["daily_trend"]
