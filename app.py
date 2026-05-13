@@ -312,6 +312,42 @@ st.markdown(
     .kpi-delta.up {background: #DCFCE7; color: #047857;}
     .kpi-delta.down {background: #FEE2E2; color: #DC2626;}
     .kpi-delta.neutral {background: #E2E8F0; color: #475569;}
+    .activation-metric-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 14px 16px;
+        min-height: 104px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .activation-metric-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    .activation-metric-title {
+        color: #475569;
+        font-size: 0.86rem;
+        line-height: 1.15rem;
+    }
+    .activation-metric-share {
+        color: #64748B;
+        background: #F1F5F9;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 0.74rem;
+        line-height: 1rem;
+        white-space: nowrap;
+    }
+    .activation-metric-value {
+        color: #1F2937;
+        font-size: 1.88rem;
+        line-height: 2.2rem;
+        font-weight: 520;
+        letter-spacing: 0;
+    }
     @media (max-width: 1300px) {
         .kpi-grid {grid-template-columns: repeat(3, minmax(0, 1fr));}
     }
@@ -690,6 +726,21 @@ def render_method_card(title: str, items: list[str]) -> None:
     item_html = "".join(f"<li>{escape(item)}</li>" for item in items)
     st.markdown(
         f"<div class='method-card'><div class='method-title'>{escape(title)}</div><ul>{item_html}</ul></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_activation_metric_card(title: str, value: str, subtitle: str) -> None:
+    st.markdown(
+        (
+            "<div class='activation-metric-card'>"
+            "<div class='activation-metric-header'>"
+            f"<div class='activation-metric-title'>{escape(title)}</div>"
+            f"<div class='activation-metric-share'>{escape(subtitle)}</div>"
+            "</div>"
+            f"<div class='activation-metric-value'>{escape(value)}</div>"
+            "</div>"
+        ),
         unsafe_allow_html=True,
     )
 
@@ -2122,10 +2173,14 @@ with tabs[5]:
         churned_count = float(churned["merchant_count"].sum() if not churned.empty else 0)
 
         metric_cols = st.columns(4)
-        metric_cols[0].metric("留存活跃商户", fmt_num(retained_count), f"占2026活跃商户 {fmt_pct(retained_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
-        metric_cols[1].metric("历史沉默激活商户", fmt_num(reactivated_count), f"占2026活跃商户 {fmt_pct(reactivated_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
-        metric_cols[2].metric("新增覆盖商户", fmt_num(new_coverage_count), f"占2026活跃商户 {fmt_pct(new_coverage_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
-        metric_cols[3].metric("流失/归零商户", fmt_num(churned_count), f"占2025活跃商户 {fmt_pct(churned_count / previous_active_total if previous_active_total else float('nan'))}", delta_color="off")
+        with metric_cols[0]:
+            render_activation_metric_card("留存活跃商户", fmt_num(retained_count), f"占2026活跃商户 {fmt_pct(retained_count / current_active_total if current_active_total else float('nan'))}")
+        with metric_cols[1]:
+            render_activation_metric_card("历史沉默激活商户", fmt_num(reactivated_count), f"占2026活跃商户 {fmt_pct(reactivated_count / current_active_total if current_active_total else float('nan'))}")
+        with metric_cols[2]:
+            render_activation_metric_card("新增覆盖商户", fmt_num(new_coverage_count), f"占2026活跃商户 {fmt_pct(new_coverage_count / current_active_total if current_active_total else float('nan'))}")
+        with metric_cols[3]:
+            render_activation_metric_card("流失/归零商户", fmt_num(churned_count), f"占2025活跃商户 {fmt_pct(churned_count / previous_active_total if previous_active_total else float('nan'))}")
 
         share_long = current_segments.melt(
             id_vars=["segment_name", "sort_order"],
