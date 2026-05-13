@@ -1866,7 +1866,7 @@ with tabs[2]:
 
 with tabs[3]:
     st.subheader("行业分布")
-    st.markdown('<div class="section-caption">行业由商户 MCC 映射；矩形面积代表 GMV 占比，颜色深浅代表交易笔数。</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-caption">行业由商户 MCC 映射；矩形面积代表交易笔数占比，颜色深浅代表 GMV。</div>', unsafe_allow_html=True)
     render_insights(insights, "industry", "执行与策略备注")
     if industry.empty and industry_period.empty:
         st.info("行业数据待补充。")
@@ -1908,17 +1908,17 @@ with tabs[3]:
                 txn_count=("txn_count", "sum"),
                 active_merchants=("active_merchants", "sum"),
             )
-            .sort_values("gmv_cny", ascending=False)
+            .sort_values("txn_count", ascending=False)
         )
-        total_industry_gmv = float(major_summary["gmv_cny"].sum())
-        major_summary["gmv_share"] = major_summary["gmv_cny"] / total_industry_gmv if total_industry_gmv else 0
+        total_industry_txn = float(major_summary["txn_count"].sum())
+        major_summary["txn_share"] = major_summary["txn_count"] / total_industry_txn if total_industry_txn else 0
 
         st.session_state.setdefault("selected_major_industry", "__all__")
         selected_major = st.session_state.get("selected_major_industry", "__all__")
         if selected_major == "__all__":
             treemap_data = major_summary.copy()
             treemap_data["level"] = treemap_data["major_industry"]
-            treemap_title = f"{selected_period_name}：按行业大类查看 GMV 占比"
+            treemap_title = f"{selected_period_name}：按行业大类查看交易笔数占比"
             treemap_key = f"industry_treemap_major_{selected_period_label}"
         else:
             back_cols = st.columns([0.2, 0.8])
@@ -1928,33 +1928,33 @@ with tabs[3]:
             if selected_major == "__all__":
                 treemap_data = major_summary.copy()
                 treemap_data["level"] = treemap_data["major_industry"]
-                treemap_title = f"{selected_period_name}：按行业大类查看 GMV 占比"
+                treemap_title = f"{selected_period_name}：按行业大类查看交易笔数占比"
                 treemap_key = f"industry_treemap_major_after_back_{selected_period_label}"
             else:
                 back_cols[1].markdown(f"#### {selected_major}")
                 treemap_data = industry_plot[industry_plot["major_industry"].eq(selected_major)].copy()
                 treemap_data["level"] = treemap_data["industry"]
-                child_total_gmv = float(treemap_data["gmv_cny"].sum())
-                treemap_data["gmv_share"] = treemap_data["gmv_cny"] / child_total_gmv if child_total_gmv else 0
-                treemap_title = f"{selected_period_name}：{selected_major} 内部 GMV 占比"
+                child_total_txn = float(treemap_data["txn_count"].sum())
+                treemap_data["txn_share"] = treemap_data["txn_count"] / child_total_txn if child_total_txn else 0
+                treemap_title = f"{selected_period_name}：{selected_major} 内部交易笔数占比"
                 treemap_key = f"industry_treemap_child_{selected_period_label}_{selected_major}"
 
         treemap_fig = px.treemap(
             treemap_data,
             path=["level"],
-            values="gmv_cny",
-            color="txn_count",
+            values="txn_count",
+            color="gmv_cny",
             color_continuous_scale=["#EEF2FF", "#2563EB"],
-            custom_data=["level", "gmv_share", "txn_count", "active_merchants"],
+            custom_data=["level", "txn_share", "gmv_cny", "active_merchants"],
             title=treemap_title,
         )
         treemap_fig.update_traces(
             texttemplate="<b>%{label}</b><br>%{customdata[1]:.1%}",
             hovertemplate=(
                 "<b>%{label}</b><br>"
-                "GMV：RMB %{value:,.0f}<br>"
-                "占比：%{customdata[1]:.1%}<br>"
-                "交易笔数：%{customdata[2]:,.0f}<br>"
+                "交易笔数：%{value:,.0f}<br>"
+                "交易笔数占比：%{customdata[1]:.1%}<br>"
+                "GMV：RMB %{customdata[2]:,.0f}<br>"
                 "活跃商户数：%{customdata[3]:,.0f}<extra></extra>"
             ),
         )
