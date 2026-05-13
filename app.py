@@ -1708,31 +1708,31 @@ with tabs[2]:
     region_plot["gmv_cny"] = pd.to_numeric(region_plot["gmv_cny"], errors="coerce").fillna(0)
     region_plot["txn_count"] = pd.to_numeric(region_plot["txn_count"], errors="coerce").fillna(0)
     region_plot["active_merchants"] = pd.to_numeric(region_plot["active_merchants"], errors="coerce").fillna(0)
-    region_plot = region_plot.sort_values("gmv_cny", ascending=False)
+    region_plot = region_plot.sort_values("txn_count", ascending=False)
     top_n = st.slider("展示城市数", min_value=5, max_value=min(20, max(len(region_plot), 5)), value=min(10, len(region_plot)), step=1)
-    chart_region = region_plot.head(top_n).sort_values("gmv_cny", ascending=True)
-    city_total = float(region_plot["gmv_cny"].sum())
-    top_share = float(region_plot.head(top_n)["gmv_cny"].sum() / city_total) if city_total else float("nan")
+    chart_region = region_plot.head(top_n).sort_values("txn_count", ascending=True)
+    city_total = float(region_plot["txn_count"].sum())
+    top_share = float(region_plot.head(top_n)["txn_count"].sum() / city_total) if city_total else float("nan")
     unmatched = region_plot[region_plot["business_city"].astype(str).isin(["未分类", "Unclassified"])]
-    unmatched_share = float(unmatched["gmv_cny"].sum() / city_total) if city_total and not unmatched.empty else float("nan")
+    unmatched_share = float(unmatched["txn_count"].sum() / city_total) if city_total and not unmatched.empty else float("nan")
     left, right = st.columns([1.2, 1])
     with left:
         fig = px.bar(
             chart_region,
-            x="gmv_cny",
+            x="txn_count",
             y="business_city",
-            color="txn_count",
+            color="gmv_cny",
             orientation="h",
-            title=f"GMV 前 {top_n} 城市",
-            labels={"gmv_cny": "GMV（元）", "business_city": "", "txn_count": "交易笔数"},
+            title=f"交易笔数前 {top_n} 城市",
+            labels={"txn_count": "交易笔数", "business_city": "", "gmv_cny": "GMV（元）"},
             color_continuous_scale=["#E0F2FE", "#0369A1"],
-            custom_data=["txn_count", "active_merchants", "geo_match_rate"],
+            custom_data=["gmv_cny", "active_merchants", "geo_match_rate"],
         )
         fig.update_traces(
             hovertemplate=(
                 "<b>%{y}</b><br>"
-                "GMV：RMB %{x:,.0f}<br>"
-                "交易笔数：%{customdata[0]:,.0f}<br>"
+                "交易笔数：%{x:,.0f}<br>"
+                "GMV：RMB %{customdata[0]:,.0f}<br>"
                 "活跃商户数：%{customdata[1]:,.0f}<br>"
                 "城市匹配率：%{customdata[2]:.1%}<extra></extra>"
             )
@@ -1743,14 +1743,14 @@ with tabs[2]:
         if not region_plot.empty:
             top_city = region_plot.iloc[0]
             top_city_name = str(top_city.get("business_city", "头部城市"))
-            top_city_share = float(top_city.get("gmv_cny", 0) / city_total) if city_total else float("nan")
+            top_city_share = float(top_city.get("txn_count", 0) / city_total) if city_total else float("nan")
             city_cards.append(
                 {
                     "kicker": "城市集中度",
-                    "title": f"{top_city_name} 是 GMV 基本盘",
+                    "title": f"{top_city_name} 是交易基本盘",
                     "body": (
-                        f"{top_city_name} 贡献 2026 Labour GMV 的 {fmt_pct(top_city_share)}，"
-                        f"前 {top_n} 城市合计贡献 {fmt_pct(top_share)}。城市结构高度集中，头部城市变化会明显影响总盘。"
+                        f"{top_city_name} 贡献 2026 Labour 交易笔数的 {fmt_pct(top_city_share)}，"
+                        f"前 {top_n} 城市合计贡献 {fmt_pct(top_share)}。城市结构按交易频次看依然集中，头部城市变化会明显影响总盘。"
                     ),
                 }
             )
@@ -1781,7 +1781,7 @@ with tabs[2]:
                         "kicker": "数据边界",
                         "title": "未分类城市需要单独看待",
                         "body": (
-                            f"未分类 GMV 占 {fmt_pct(unmatched_share)}。它反映地址未能稳定匹配到 business_city，"
+                            f"未分类交易笔数占 {fmt_pct(unmatched_share)}。它反映地址未能稳定匹配到 business_city，"
                             "不应归入某个具体城市，但会影响城市份额解读。"
                         ),
                     }
@@ -1801,9 +1801,9 @@ with tabs[2]:
             st.markdown("#### 城市洞察")
             st.markdown("".join(card_html), unsafe_allow_html=True)
     with right:
-        st.metric(f"前 {top_n} 城市 GMV 占比", fmt_pct(top_share))
+        st.metric(f"前 {top_n} 城市交易笔数占比", fmt_pct(top_share))
         if not unmatched.empty:
-            st.metric("未分类城市 GMV 占比", fmt_pct(unmatched_share))
+            st.metric("未分类城市交易笔数占比", fmt_pct(unmatched_share))
         city_display = region_plot.copy()
         city_display["gmv_cny"] = city_display["gmv_cny"].map(lambda value: f"{float(value):,.0f}")
         city_display["txn_count"] = city_display["txn_count"].map(lambda value: f"{float(value):,.0f}")
