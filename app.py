@@ -144,7 +144,7 @@ COLUMN_LABELS_ZH = {
     "avg_daily_active_users": "日均活跃交易用户数",
     "avg_daily_user_frequency": "日均用户交易频次",
     "daily_user_frequency": "每日用户交易频次",
-    "aov_cny": "客单价（元）",
+    "aov_cny": "笔均价（元）",
     "business_city": "城市",
     "geo_match_rate": "城市匹配率",
     "yoy_gmv_growth": "GMV 同比",
@@ -174,8 +174,8 @@ COLUMN_LABELS_ZH = {
     "note": "备注",
     "onboarding_date": "入驻日期",
     "activation_segment": "商户分组代码",
-    "aov_2025_cny": "2025 五一客单价",
-    "aov_2026_cny": "2026 五一客单价",
+    "aov_2025_cny": "2025 五一笔均价",
+    "aov_2026_cny": "2026 五一笔均价",
 }
 
 
@@ -641,7 +641,7 @@ def render_kpi_cards(
             "delta": growth(current_row.get("gmv_cny"), compare_row.get("gmv_cny")),
         },
         {
-            "title": "客单价",
+            "title": "笔均价",
             "value": fmt_money(current_row.get("aov_cny")),
             "delta": growth(current_row.get("aov_cny"), compare_row.get("aov_cny")),
         },
@@ -698,24 +698,14 @@ def render_external_context_cards(country: str = "NZ") -> None:
     if country == "AU":
         cards = [
             {
-                "kicker": "入境客流恢复",
-                "title": "澳洲短期入境游客在 2026 年 3 月继续修复",
+                "kicker": "中国客群信号",
+                "title": "澳洲中国来源短期访客仍是重要背景，但不应用整体入境增速替代",
                 "body": (
-                    "ABS 2026 年 3 月 OAD 显示，澳大利亚短期访客入境 818,990 人次，同比 +7.6%；"
-                    "中国为当月第二大来源市场，短期访客入境 87,560 人次。"
+                    "ABS 2026 年 3 月 OAD 显示，中国来源短期访客入境澳大利亚 87,560 人次。"
+                    "本报告只把该指标作为中国客群背景，不用澳洲整体短期访客 +7.6% 直接解释 WeChat Pay 增长。"
                 ),
                 "source": "ABS Overseas Arrivals and Departures, Mar 2026",
                 "url": "https://www.abs.gov.au/statistics/industry/tourism-and-transport/overseas-arrivals-and-departures-australia/latest-release",
-            },
-            {
-                "kicker": "消费大盘",
-                "title": "澳洲国际旅游消费强于人次，解释高客单价更合适",
-                "body": (
-                    "TRA 年度至 2025 年 12 月 IVS 显示，国际游客在澳消费 A$39.2bn，同比 +19%；"
-                    "中国仍是高消费来源市场，适合作为高客单 retail / luxury 场景的外部背景。"
-                ),
-                "source": "Tourism Research Australia IVS, YE Dec 2025",
-                "url": "https://www.tra.gov.au/en/international/international-tourism-results",
             },
             {
                 "kicker": "汇率口径",
@@ -740,40 +730,20 @@ def render_external_context_cards(country: str = "NZ") -> None:
                 "</div>"
             )
         card_html.append("</div>")
-        st.markdown("#### 外部旅游与汇率背景信号")
+        st.markdown("#### 中国客群与汇率背景信号")
         st.markdown("".join(card_html), unsafe_allow_html=True)
         return
 
     cards = [
         {
-            "kicker": "入境客流恢复",
-            "title": "新西兰整体入境游客继续回升",
-            "body": (
-                "Stats NZ 月度国际旅行数据经政府发布摘要显示，2026 年 2 月海外访客超过 40.8 万人，"
-                "同比多 5.3 万；截至 2026 年 2 月的年度海外访客约 358 万，约为 2019 年 12 月水平的 92%。"
-            ),
-            "source": "Stats NZ / NZ Government, 2026-04-14",
-            "url": "https://www.beehive.govt.nz/release/new-zealand-tourism-continuing-rise",
-        },
-        {
             "kicker": "中国客群信号",
-            "title": "中国访客在春节窗口出现明显恢复",
+            "title": "新西兰中国访客在春节窗口恢复，但需避免用整体游客恢复放大解释",
             "body": (
-                "同一 Stats NZ 月度数据摘要显示，2026 年 2 月中国访客较 2025 年 2 月增加 41,700 人，"
-                "春节与 NZeTA 政策便利共同放大了短期入境恢复信号。"
+                "Stats NZ 月度数据摘要显示，2026 年 2 月中国访客较 2025 年 2 月增加 41,700 人。"
+                "该信号只作为中国客群与春节窗口的外部背景，不把整体海外访客恢复直接等同为 WeChat Pay 客群增长。"
             ),
             "source": "Stats NZ / NZ Government, 2026-04-14",
             "url": "https://www.beehive.govt.nz/release/new-zealand-tourism-continuing-rise",
-        },
-        {
-            "kicker": "消费大盘",
-            "title": "旅游消费恢复为支付增长提供外部背景",
-            "body": (
-                "MBIE 修订版 MRTE 显示，截至 2026 年 2 月年度新西兰游客总消费约 465 亿新西兰元，同比 +11%；"
-                "其中国际游客消费约 196 亿新西兰元，同比 +24%。"
-            ),
-            "source": "MBIE / TEIC MRTE, 2026-03-31",
-            "url": "https://teic.mbie.govt.nz/assets/mrte/MRTE%20Topline%20results%20FINAL.pdf",
         },
     ]
     card_html = ["<div class='executive-insight-stack'>"]
@@ -787,7 +757,7 @@ def render_external_context_cards(country: str = "NZ") -> None:
             "</div>"
         )
     card_html.append("</div>")
-    st.markdown("#### 外部旅游背景信号")
+    st.markdown("#### 中国客群旅游背景信号")
     st.markdown("".join(card_html), unsafe_allow_html=True)
 
 
@@ -805,6 +775,16 @@ def coverage_metric(coverage_frame: pd.DataFrame, metric: str) -> float:
     if rows.empty:
         return float("nan")
     return float(rows["value"].iloc[0])
+
+
+def avg_daily_active_merchants(row: pd.Series) -> float:
+    if row is None or row.empty:
+        return float("nan")
+    merchant_days = row.get("merchant_day_count")
+    days = row.get("days", row.get("period_days"))
+    if pd.isna(merchant_days) or pd.isna(days) or float(days) == 0:
+        return float("nan")
+    return float(merchant_days) / float(days)
 
 
 def render_executive_insight_cards(
@@ -828,6 +808,7 @@ def render_executive_insight_cards(
         labour_aov_yoy = growth(current_row.get("aov_cny"), yoy_row.get("aov_cny"))
         baseline_gmv_uplift = growth(current_row.get("avg_daily_gmv_cny"), baseline_row.get("avg_daily_gmv_cny"))
         baseline_txn_uplift = growth(current_row.get("avg_daily_txn"), baseline_row.get("avg_daily_txn"))
+        baseline_merchant_uplift = growth(avg_daily_active_merchants(current_row), avg_daily_active_merchants(baseline_row))
 
         cards.append(
             {
@@ -835,8 +816,8 @@ def render_executive_insight_cards(
                 "title": "澳洲五一不是交易笔数拉升，而是 GMV 温和抬升",
                 "body": (
                     f"Labour GMV 同比 {fmt_signed_pct(labour_gmv_yoy)}，交易笔数同比 {fmt_signed_pct(labour_txn_yoy)}，"
-                    f"活跃交易用户同比 {fmt_signed_pct(labour_user_yoy)}，AOV 同比 {fmt_signed_pct(labour_aov_yoy)}。"
-                    "这更像是高客单品类和人民币金额口径支撑 GMV，而澳元走强带来的体感成本上升可能压制了支付频率。"
+                    f"活跃交易用户同比 {fmt_signed_pct(labour_user_yoy)}，笔均价同比 {fmt_signed_pct(labour_aov_yoy)}。"
+                    "这更像是高金额品类和人民币金额口径支撑 GMV，而澳元走强带来的体感成本上升可能压制了支付频率。"
                 ),
             }
         )
@@ -846,8 +827,9 @@ def render_executive_insight_cards(
                 "title": "相对 4 月日常盘，GMV 强于交易强度",
                 "body": (
                     f"相较 2026 年 4 月非 Labour baseline，日均 GMV {fmt_signed_pct(baseline_gmv_uplift)}，"
-                    f"日均交易笔数 {fmt_signed_pct(baseline_txn_uplift)}。"
-                    "因此澳洲页应把结论写成 spend intensity 改善，而不是 footfall/transaction surge。"
+                    f"日均交易笔数 {fmt_signed_pct(baseline_txn_uplift)}，"
+                    f"日均活跃商户数 {fmt_signed_pct(baseline_merchant_uplift)}。"
+                    "因此澳洲页应把结论写成商户覆盖与 spend intensity 温和改善，而不是单纯 footfall/transaction surge。"
                 ),
             }
         )
@@ -937,7 +919,7 @@ def render_executive_insight_cards(
                     "title": "头部商户集中度高，解释时要避免外推到全市场",
                     "body": (
                         f"前 10 商户贡献 2026 五一 GMV 的 {fmt_pct(top10_share)}，前 20 贡献 {fmt_pct(top20_share)}。"
-                        "Chanel、Hermes、UMALL、Epharmacy 等商户会显著影响 GMV 和 AOV。"
+                        "Chanel、Hermes、UMALL、Epharmacy 等商户会显著影响 GMV 和笔均价。"
                     ),
                 }
             )
@@ -977,11 +959,11 @@ def render_executive_insight_cards(
     cards.append(
         {
             "kicker": "增长来源",
-            "title": "增长由交易笔数驱动，而非客单价拉动",
+            "title": "增长由交易笔数驱动，而非笔均价拉动",
             "body": (
                 f"Labour GMV 同比 {fmt_signed_pct(growth(current_row.get('gmv_cny'), yoy_row.get('gmv_cny')))}，"
                 f"交易笔数同比 {fmt_signed_pct(growth(current_row.get('txn_count'), yoy_row.get('txn_count')))}。"
-                f"AOV 同比 {fmt_signed_pct(growth(current_row.get('aov_cny'), yoy_row.get('aov_cny')))}，更适合理解为更广泛、更高频的使用。"
+                f"笔均价同比 {fmt_signed_pct(growth(current_row.get('aov_cny'), yoy_row.get('aov_cny')))}，更适合理解为更广泛、更高频的使用。"
             ),
         }
     )
@@ -993,7 +975,7 @@ def render_executive_insight_cards(
             "body": (
                 f"相较 4 月非 Labour baseline，日均交易笔数 {fmt_signed_pct(growth(current_row.get('avg_daily_txn'), baseline_row.get('avg_daily_txn')))}，"
                 f"日均 GMV {fmt_signed_pct(growth(current_row.get('avg_daily_gmv_cny'), baseline_row.get('avg_daily_gmv_cny')))}。"
-                f"活跃商户数 {fmt_signed_pct(growth(current_row.get('active_merchants'), baseline_row.get('active_merchants')))}，说明提升更多来自活跃商户内的交易变密。"
+                f"日均活跃商户数 {fmt_signed_pct(growth(avg_daily_active_merchants(current_row), avg_daily_active_merchants(baseline_row)))}，说明节假日期间参与交易的商户覆盖与活跃密度同步提升。"
             ),
         }
     )
@@ -1006,7 +988,7 @@ def render_executive_insight_cards(
                 "body": (
                     f"2026 Labour 日均活跃交易用户数同比 {fmt_signed_pct(growth(current_row.get('avg_daily_active_users'), yoy_row.get('avg_daily_active_users')))}，"
                     f"日均用户交易频次同比 {fmt_signed_pct(growth(current_row.get('avg_daily_user_frequency'), yoy_row.get('avg_daily_user_frequency')))}。"
-                    f"客单价同比 {fmt_signed_pct(growth(current_row.get('aov_cny'), yoy_row.get('aov_cny')))}，说明增长更适合从付款用户规模和交易频次解释。"
+                    f"笔均价同比 {fmt_signed_pct(growth(current_row.get('aov_cny'), yoy_row.get('aov_cny')))}，说明增长更适合从付款用户规模和交易频次解释。"
                 ),
             }
         )
@@ -1213,7 +1195,7 @@ def render_period_bubble_echarts(bubble_data: pd.DataFrame) -> object:
                         '日均 GMV：RMB ' + money(v[1]),
                         '总 GMV：RMB ' + money(v[2]),
                         '商户日均频次：' + v[5].toFixed(2),
-                        '客单价：RMB ' + money(v[6])
+                        '笔均价：RMB ' + money(v[6])
                     ].join('<br/>');
                 }
                 """
@@ -1368,7 +1350,7 @@ def render_au_partial_report(frames: dict[str, pd.DataFrame], source_label: str)
         cols[0].metric("2026 五一日均交易", fmt_num(current.get("avg_daily_txn")), fmt_signed_pct(current.get("avg_daily_txn") / yoy.get("avg_daily_txn") - 1 if yoy.get("avg_daily_txn") else np.nan))
         cols[1].metric("2026 五一日均 GMV", fmt_money(current.get("avg_daily_gmv_cny")), fmt_signed_pct(current.get("avg_daily_gmv_cny") / yoy.get("avg_daily_gmv_cny") - 1 if yoy.get("avg_daily_gmv_cny") else np.nan))
         cols[2].metric("日均活跃用户", fmt_num(current.get("avg_daily_active_users")), fmt_signed_pct(current.get("avg_daily_active_users") / yoy.get("avg_daily_active_users") - 1 if yoy.get("avg_daily_active_users") else np.nan))
-        cols[3].metric("AOV", fmt_money(current.get("aov_cny")), fmt_signed_pct(current.get("aov_cny") / yoy.get("aov_cny") - 1 if yoy.get("aov_cny") else np.nan))
+        cols[3].metric("笔均价", fmt_money(current.get("aov_cny")), fmt_signed_pct(current.get("aov_cny") / yoy.get("aov_cny") - 1 if yoy.get("aov_cny") else np.nan))
 
         left, right = st.columns([1.25, 1])
         with left:
@@ -1468,7 +1450,7 @@ def render_au_partial_report(frames: dict[str, pd.DataFrame], source_label: str)
         st.markdown(
             """
             - 当前 AU 预览只使用 `01a_active_merchant_daily_trade_daily_probe.csv`、`user_aggregate_export.csv` 和 `material_scan_aggregate_export.csv`。
-            - 可展示：period 汇总、每日趋势、活跃用户、AOV、物料 PV/UV/扫码物料快照。
+            - 可展示：period 汇总、每日趋势、活跃用户、笔均价、物料 PV/UV/扫码物料快照。
             - 暂不展示：城市、行业、Top merchants、same-store YoY、商户激活。这些需要完整 `01` merchant-day 明细。
             - `active_merchants` 在当前页面表示每日活跃商户数；period-level 去重商户数需等待完整 01 明细。
             - `txn_vs_02_diff` / `gmv_vs_02_diff` 用于提示 01a 与 02 交易表口径差异，最终版需用完整 01 明细复核。
@@ -1591,7 +1573,7 @@ yoy = get_period(period_summary, "holiday_2025_labour")
 baseline = get_period(period_summary, "baseline_2026_apr_non_labour")
 
 st.title(f"{report_country_label} 五一假期 WeChat Pay 热度报告")
-st.caption("日均交易为主指标，GMV 作为规模指标，客单价与商户频次共同解释交易结构。")
+st.caption("日均交易为主指标，GMV 作为规模指标，笔均价与商户频次共同解释交易结构。")
 
 tabs = st.tabs(["总览", "时段深挖", "城市", "行业", "交易用户", "商户激活", "头部商户", "方法与边界"])
 
@@ -1685,7 +1667,7 @@ with tabs[1]:
         summary_cols[0].metric("天数", fmt_num(selected_period.get("days")))
         summary_cols[1].metric("日均交易笔数", fmt_num(selected_period.get("avg_daily_txn")))
         summary_cols[2].metric("日均 GMV", fmt_money(selected_period.get("avg_daily_gmv_cny")))
-        summary_cols[3].metric("客单价", fmt_money(selected_period.get("aov_cny")))
+        summary_cols[3].metric("笔均价", fmt_money(selected_period.get("aov_cny")))
 
         selected_daily = period_daily[period_daily["period_label"].eq(st.session_state["selected_period_label"])].sort_values("trade_date_ds")
         if selected_daily.empty:
@@ -2059,7 +2041,7 @@ with tabs[4]:
         st.markdown("#### 2026 五一交易用户概览")
         if user_ready:
             st.metric("时段活跃交易用户数", fmt_num(current.get("active_users")))
-            st.metric("客单价（元）", fmt_num(current.get("aov_cny"), 2))
+            st.metric("笔均价（元）", fmt_num(current.get("aov_cny"), 2))
             st.metric("交易笔数", fmt_num(current.get("txn_count")))
             render_method_card(
                 "解读边界",
@@ -2299,7 +2281,7 @@ with tabs[7]:
         - 商户日均频次 = 总交易笔数 / 活跃商户日。
         - GMV 使用 01 商户日导出中的 `todaytrademoney / 100`，按人民币汇总。
         - 日均 GMV = 总 GMV / 时段天数。
-        - 客单价 = GMV / 交易笔数，不直接除以活跃用户数。
+        - 笔均价 = GMV / 交易笔数，不直接除以活跃用户数。
         - 两个五一窗口都是 13 天，因此总 GMV 可直接做同比；国庆、春节和 4 月基线等不同时长窗口应使用日均 GMV / 日均交易笔数比较。
 
         **当前数据状态**
@@ -2324,10 +2306,9 @@ with tabs[7]:
 
         **外部公开证据**
 
-        - Stats NZ 国际旅行月度数据用于解释新西兰入境游客恢复背景；2026 年 2 月海外访客超过 40.8 万人，截至 2026 年 2 月年度海外访客约 358 万，约为 2019 年 12 月水平的 92%。
-        - Stats NZ 月度数据摘要显示，2026 年 2 月中国访客同比增加 41,700 人，春节窗口的中国客群恢复可作为本报告春节/假期支付信号的外部背景。
-        - MBIE/TEIC 修订版 Monthly Regional Tourism Estimates 显示，截至 2026 年 2 月年度新西兰游客总消费约 465 亿新西兰元，同比 +11%；国际游客消费约 196 亿新西兰元，同比 +24%。
-        - MBIE International Visitor Survey 用于解释国际游客消费、行为和停留特征，但 IVS 季度结果抽样误差更高；本报告不把 IVS 或 MRTE 直接等同为 WeChat Pay 客群规模。
+        - 外部旅游信号聚焦中国客群：Stats NZ 月度数据摘要显示，2026 年 2 月中国访客同比增加 41,700 人，可作为春节窗口中国客群恢复的背景。
+        - 澳洲外部信号聚焦中国来源市场：ABS 2026 年 3 月 OAD 显示，中国来源短期访客入境澳大利亚 87,560 人次；不使用澳洲整体入境增速直接解释 WeChat Pay 客群。
+        - 本报告不把整体海外访客恢复、国际游客总消费或旅游抽样调查直接等同为 WeChat Pay 客群规模。
 
         **报告范围与边界**
 
