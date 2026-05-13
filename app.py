@@ -1991,7 +1991,8 @@ with tabs[4]:
         "aov_cny",
     ]:
         user_plot[col] = pd.to_numeric(user_plot[col], errors="coerce") if col in user_plot else pd.NA
-    user_plot = user_plot.sort_values("sort_order" if "sort_order" in user_plot else "period_label")
+    user_plot["overview_order"] = user_plot["period_label"].map(OVERVIEW_PERIOD_ORDER).fillna(999)
+    user_plot = user_plot.sort_values(["overview_order", "period_label"])
     user_ready = user_plot["avg_daily_active_users"].notna().any()
 
     left, right = st.columns([1.25, 0.8])
