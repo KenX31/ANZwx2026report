@@ -864,23 +864,23 @@ def render_executive_insight_cards(
         cards.append(
             {
                 "kicker": "增长判断",
-                "title": "澳洲五一不是交易笔数拉升，而是 GMV 温和抬升",
+                "title": "澳洲五一 GMV 温和提升，交易笔数表现相对平稳",
                 "body": (
                     f"Labour GMV 同比 {fmt_signed_pct(labour_gmv_yoy)}，交易笔数同比 {fmt_signed_pct(labour_txn_yoy)}，"
                     f"活跃交易用户同比 {fmt_signed_pct(labour_user_yoy)}，笔均价同比 {fmt_signed_pct(labour_aov_yoy)}。"
-                    "这更像是高金额品类和人民币金额口径支撑 GMV，而澳元走强带来的体感成本上升可能压制了支付频率。"
+                    "GMV 改善更多来自交易结构和金额口径变化，交易频次端的提升相对有限；汇率变化仅作为解释背景，不作为单一归因。"
                 ),
             }
         )
         cards.append(
             {
                 "kicker": "Baseline 对比",
-                "title": "相对 4 月日常盘，GMV 强于交易强度",
+                "title": "相对 4 月日常盘，商户覆盖和 GMV 有温和改善",
                 "body": (
                     f"相较 2026 年 4 月非 Labour baseline，日均 GMV {fmt_signed_pct(baseline_gmv_uplift)}，"
                     f"日均交易笔数 {fmt_signed_pct(baseline_txn_uplift)}，"
                     f"日均活跃商户数 {fmt_signed_pct(baseline_merchant_uplift)}。"
-                    "因此澳洲页应把结论写成商户覆盖与 spend intensity 温和改善，而不是单纯 footfall/transaction surge。"
+                    "因此更适合表述为商户覆盖和消费金额的温和改善，而不是单纯交易人数或交易笔数的大幅增长。"
                 ),
             }
         )
@@ -891,12 +891,12 @@ def render_executive_insight_cards(
                 cards.append(
                     {
                         "kicker": "假期层级",
-                        "title": "五一低于春节和国庆，不能按 NZ 的强假期叙事套用",
+                        "title": "五一表现低于春节和国庆，假期强度需分层解读",
                         "body": (
                             f"五一日均 GMV RMB {float(current_row.get('avg_daily_gmv_cny')) / 1_000_000:.1f}M，"
                             f"低于春节 RMB {float(cny.get('avg_daily_gmv_cny')) / 1_000_000:.1f}M "
                             f"和国庆 RMB {float(golden.get('avg_daily_gmv_cny')) / 1_000_000:.1f}M。"
-                            "澳洲更适合讲结构性高客单，而不是把五一包装成年度峰值。"
+                            "澳洲五一更适合作为结构性假期窗口观察，不宜直接表述为全年最强峰值。"
                         ),
                     }
                 )
@@ -911,11 +911,11 @@ def render_executive_insight_cards(
             cards.append(
                 {
                     "kicker": "商户覆盖",
-                    "title": "基本盘回落，由新覆盖和回流商户抵消",
+                    "title": "留存商户承压，新覆盖和历史沉默激活形成补充",
                     "body": (
-                        f"Retained active 商户 GMV 同比 {fmt_signed_pct(retained_gmv_yoy)}；"
-                        f"new coverage + reactivated dormant 贡献当期 GMV 的 {fmt_pct(float(incremental['current_gmv_share'].sum()))}，"
-                        f"churned/zeroed 商户对应去年同期 GMV RMB {float(churned['holiday_2025_gmv_cny'].sum()) / 1_000_000:.1f}M。"
+                        f"留存活跃商户 GMV 同比 {fmt_signed_pct(retained_gmv_yoy)}；"
+                        f"新增覆盖和历史沉默激活商户贡献当期 GMV 的 {fmt_pct(float(incremental['current_gmv_share'].sum()))}，"
+                        f"流失/归零商户对应去年同期 GMV RMB {float(churned['holiday_2025_gmv_cny'].sum()) / 1_000_000:.1f}M。"
                     ),
                 }
             )
@@ -928,11 +928,11 @@ def render_executive_insight_cards(
             cards.append(
                 {
                     "kicker": "城市结构",
-                    "title": "Sydney 是澳洲核心盘，但地理未分类仍需谨慎标注",
+                    "title": "Sydney 是澳洲主要城市盘，未分类部分需单独标注",
                     "body": (
                         f"{top_city['business_city']} 贡献 2026 五一 GMV 的 {fmt_pct(float(top_city['gmv_share']))}，"
                         f"前 5 城市合计贡献 {fmt_pct(top5_share)}。"
-                        "当前澳洲 geo match 约八成，未分类城市的高占比会影响城市解读。"
+                        "未分类城市来自地址或门店信息无法稳定匹配的记录，解读城市份额时需单独呈现。"
                     ),
                 }
             )
@@ -952,11 +952,11 @@ def render_executive_insight_cards(
                 cards.append(
                     {
                         "kicker": "行业结构",
-                        "title": "高客单零售解释 GMV，高频民生解释交易笔数",
+                        "title": "高金额零售贡献 GMV，民生场景贡献交易频次",
                         "body": (
                             f"GMV 前三大行业贡献 {fmt_pct(retail_share)}，以综合/百货、礼品珠宝专卖、服饰鞋帽为主；"
                             f"食品/超市/便利店 + 餐饮贡献交易笔数 {fmt_pct(frequency_txn_share)}。"
-                            "这与澳洲头部 luxury / retail 商户占比较高的实际数据一致。"
+                            "行业结构显示，金额贡献和交易频次贡献来自不同类型场景。"
                         ),
                     }
                 )
@@ -996,8 +996,8 @@ def render_executive_insight_cards(
         unmatched_share = float(pd.to_numeric(unmatched.get("gmv_cny", pd.Series(dtype="float64")), errors="coerce").fillna(0).sum() / city_total) if city_total else float("nan")
         st.markdown(
             (
-                f"<div class='executive-guardrail'>数据边界：MCC match {fmt_pct(mcc_match)}，"
-                f"geo match {fmt_pct(geo_match)}，未分类城市 GMV {fmt_pct(unmatched_share)}；"
+                f"<div class='executive-guardrail'>数据边界：MCC 匹配率 {fmt_pct(mcc_match)}，"
+                f"地理匹配率 {fmt_pct(geo_match)}，未分类城市 GMV {fmt_pct(unmatched_share)}；"
                 "AU 01 明细和 02 活跃用户均按 OFFLINE/BOTH 且剔除 ZHENXING 的核心口径接入；"
                 "交易明细表与用户聚合表仍有少量金额口径差。</div>"
             ),
@@ -1057,9 +1057,9 @@ def render_executive_insight_cards(
                 "kicker": "商户覆盖",
                 "title": "留存商户是基本盘，新商户和同档期回流贡献增量",
                 "body": (
-                    f"Retained active 商户贡献 2026 Labour GMV 的 {fmt_pct(retained_share)}，"
+                    f"留存活跃商户贡献 2026 Labour GMV 的 {fmt_pct(retained_share)}，"
                     f"同档期留存商户 GMV 同比 {fmt_signed_pct(retained_gmv_yoy)}。"
-                    f"New coverage + same-window returning existing 贡献当前 GMV 的 {fmt_pct(float(incremental['current_gmv_share'].sum()))}。"
+                    f"新增覆盖和同档期回流商户贡献当前 GMV 的 {fmt_pct(float(incremental['current_gmv_share'].sum()))}。"
                 ),
             }
         )
@@ -1161,8 +1161,8 @@ def render_executive_insight_cards(
     active_user_note = "active-user 字段已接入" if active_user_ready else "active-user 字段等待修正后的 02 重跑后接入"
     st.markdown(
         (
-            f"<div class='executive-guardrail'>数据边界：MCC match {fmt_pct(mcc_match)}，"
-            f"geo match {fmt_pct(geo_match)}，未分类城市 GMV {fmt_pct(unmatched_share)}；{active_user_note}。</div>"
+            f"<div class='executive-guardrail'>数据边界：MCC 匹配率 {fmt_pct(mcc_match)}，"
+            f"地理匹配率 {fmt_pct(geo_match)}，未分类城市 GMV {fmt_pct(unmatched_share)}；{active_user_note}。</div>"
         ),
         unsafe_allow_html=True,
     )
@@ -2338,6 +2338,27 @@ with tabs[7]:
         if "active_users" in period_summary and period_summary["active_users"].notna().any()
         else "待重跑：本地 02 需要与 01 的 OFFLINE/BOTH 及核心排除口径对齐后再展示活跃用户字段"
     )
+    is_au_report = country == "澳大利亚"
+    country_scope_note = (
+        "国家范围：仅澳大利亚商户，基于 `merchant_country_code in ('036', '36')`。"
+        if is_au_report
+        else "国家范围：仅新西兰商户，基于 `merchant_country_code = '554'`。"
+    )
+    merchant_scope_note = (
+        "`wechat_pay_overseas::t_dw_ol_submch_all_day`：澳大利亚商户范围和商户属性，按 `ds + submchid` 关联；提供 `merchant_country_code in ('036', '36')`、`business_type`、`stores_address`、MCC 和机构字段。"
+        if is_au_report
+        else "`wechat_pay_overseas::t_dw_ol_submch_all_day`：新西兰商户范围和商户属性，按 `ds + submchid` 关联；提供 `merchant_country_code = '554'`、`business_type`、`stores_address`、MCC 和机构字段。"
+    )
+    geo_note = (
+        "`D:\\Tencent\\Data analysis\\ANZ_Data_Warehouse\\data\\Geo_warehouse`：澳大利亚地理参考文件；城市匹配优先使用商户名中的城市/区域线索，再使用地址、postcode 和维表规则。"
+        if is_au_report
+        else "`D:\\Tencent\\Data analysis\\ANZ_Data_Warehouse\\data\\Geo_warehouse\\nz_geo_dimension.csv`：新西兰地理参考文件；城市匹配优先使用商户名中的城市/区域线索，再使用地址、postcode 和维表规则。"
+    )
+    data_status_note = (
+        "澳大利亚已接入完整 01 商户日明细、02 用户聚合、行业映射和 AU 地理维表；城市未分类部分来自地址或门店信息无法稳定匹配的记录。"
+        if is_au_report
+        else "新西兰已接入完整 01 商户日明细、02 用户聚合、行业映射和 NZ 地理维表；城市未分类部分来自地址或门店信息无法稳定匹配的记录。"
+    )
     st.markdown(
         f"""
         **核心指标口径**
@@ -2354,19 +2375,19 @@ with tabs[7]:
         - 选择已处理本地数据时，页面使用处理后的 `01` 商户日明细和 `02` 用户聚合；内部物料激励小程序访问数据不作为当前报告展示指标。
         - 城市、行业、头部商户、同店和商户激活视图均由完整 01 商户日明细在本地聚合生成。
         - 活跃用户状态：{active_user_status}。
-        - 澳大利亚后续复用同一套分析结构，需另行完成分区、行数和 join 覆盖 probe 后再导出。
+        - {data_status_note}
 
         **云端来源表**
 
         - `wechat_pay_overseas::t_dw_oversea_mch_manage_detail_day`：商户日交易汇总，提供交易笔数、GMV、商户入驻日和商户级时段对比。
-        - `wechat_pay_overseas::t_dw_ol_submch_all_day`：新西兰商户范围和商户属性，按 `ds + submchid` 关联；提供 `merchant_country_code = '554'`、`business_type`、`stores_address`、MCC 和机构字段。
+        - {merchant_scope_note}
         - `wechat_pay_overseas::t_dwm_rate_trade_funds_profit_loss_day`：02 用户聚合的交易明细来源，只用于活跃用户数和对账检查，不替代本报告采用的 01 GMV。
         - 内部物料激励小程序访问数据与全球有礼访问口径未验证，当前报告不展示，也不用于转化或渗透率计算。
 
         **本地维表来源**
 
         - `D:\\Tencent\\Data analysis\\mcc_industry_final.csv`：MCC 到行业大类和细分行业映射。
-        - `D:\\Tencent\\Data analysis\\ANZ_Data_Warehouse\\data\\Geo_warehouse\\nz_geo_dimension.csv`：新西兰地理参考文件。
+        - {geo_note}
         - `D:\\Tencent\\Data analysis\\Wechat-Pay-ANZ-MAP`：复用其 `business_city` 匹配和标准化逻辑。
 
         **外部公开证据**
@@ -2377,7 +2398,7 @@ with tabs[7]:
 
         **报告范围与边界**
 
-        - 国家范围：仅新西兰商户，基于 `merchant_country_code = '554'`。
+        - {country_scope_note}
         - 渠道范围：`business_type in ('OFFLINE', 'BOTH')`；线上-only 商户已从处理后报告输出中排除。
         - 核心排除：ZHENXING 机构已从报告输出中剔除。
         - 敏感数据：不导出原始用户标识；02 仅保留聚合后的 `active_user_cnt`。
@@ -2392,7 +2413,9 @@ with tabs[7]:
         公开证据链接：
         [Stats NZ 月度国际旅行摘要](https://www.beehive.govt.nz/release/new-zealand-tourism-continuing-rise)；
         [MBIE/TEIC MRTE 重点结果](https://teic.mbie.govt.nz/assets/mrte/MRTE%20Topline%20results%20FINAL.pdf)；
-        [MBIE International Visitor Survey](https://www.mbie.govt.nz/immigration-and-tourism/tourism-research-and-data/tourism-data-releases/international-visitor-survey-ivs)。
+        [MBIE International Visitor Survey](https://www.mbie.govt.nz/immigration-and-tourism/tourism-research-and-data/tourism-data-releases/international-visitor-survey-ivs)；
+        [ABS Overseas Arrivals and Departures](https://www.abs.gov.au/statistics/industry/tourism-and-transport/overseas-arrivals-and-departures-australia/latest-release)；
+        [RBA Exchange Rates](https://www.rba.gov.au/statistics/frequency/exchange-rates.html)。
         """
     )
     if not period_catalog.empty:
