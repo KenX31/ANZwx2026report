@@ -2088,7 +2088,7 @@ with tabs[5]:
             "口径说明",
             [
                 "留存活跃：2025 五一有交易，2026 五一也有交易。",
-                "同窗口回流存量：开户日 <= 2025-05-07，2025 五一无交易，2026 五一有交易；不是全年沉默定义。",
+                "历史沉默激活：开户日 <= 2025-05-07，2025 五一无交易，2026 五一有交易；为同窗口沉默后的重新活跃。",
                 "新增覆盖：开户日 > 2025-05-07，且 2026 五一有交易。",
                 "流失/归零：2025 五一有交易，2026 五一无交易。",
             ],
@@ -2098,7 +2098,7 @@ with tabs[5]:
     else:
         segment_labels = {
             "retained_active": "留存活跃",
-            "reactivated_dormant": "同窗口回流存量",
+            "reactivated_dormant": "历史沉默激活",
             "new_coverage": "新增覆盖",
             "current_only_unknown_onboarding": "本期活跃但入驻日未知",
             "churned_zeroed": "流失/归零",
@@ -2123,7 +2123,7 @@ with tabs[5]:
 
         metric_cols = st.columns(4)
         metric_cols[0].metric("留存活跃商户", fmt_num(retained_count), f"占2026活跃商户 {fmt_pct(retained_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
-        metric_cols[1].metric("回流存量商户", fmt_num(reactivated_count), f"占2026活跃商户 {fmt_pct(reactivated_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
+        metric_cols[1].metric("历史沉默激活商户", fmt_num(reactivated_count), f"占2026活跃商户 {fmt_pct(reactivated_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
         metric_cols[2].metric("新增覆盖商户", fmt_num(new_coverage_count), f"占2026活跃商户 {fmt_pct(new_coverage_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
         metric_cols[3].metric("流失/归零商户", fmt_num(churned_count), f"占2025活跃商户 {fmt_pct(churned_count / previous_active_total if previous_active_total else float('nan'))}", delta_color="off")
 
