@@ -1,6 +1,7 @@
 .streamlit/secrets.toml
 data/raw/
 data/processed/
+data/processed_au/
 data/processed_au_partial/
 outputs/
 __pycache__/

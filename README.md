@@ -30,7 +30,7 @@ DATA_GITHUB_TOKEN = "github_pat_read_only"
 DATA_GITHUB_REPO = "KenX31/anzdata"
 DATA_GITHUB_REF = "main"
 DATA_PROJECT = "anz-labour-day-2026"
-DATA_VERSION = "2026-05-13-review-v1"
+DATA_VERSION = "2026-05-13-au-full-v2"
 ```
 
 The app also accepts `NZ_REPORT_ACCESS = "plain-access-key"` for local testing,
@@ -54,6 +54,20 @@ projects/
       period_daily.csv
       period_summary.csv
       merchant_activation_summary.csv
+      top_merchants.csv
+      top_merchants_by_txn.csv
+      top_merchants_by_frequency.csv
+    processed_au/
+      summary_kpis.csv
+      daily_trend.csv
+      region_summary.csv
+      industry_summary.csv
+      industry_period_summary.csv
+      period_catalog.csv
+      period_daily.csv
+      period_summary.csv
+      merchant_activation_summary.csv
+      merchant_activation_detail.csv
       top_merchants.csv
       top_merchants_by_txn.csv
       top_merchants_by_frequency.csv

@@ -26,6 +26,7 @@ except Exception:  # pragma: no cover - deployment guard if dependency is missin
 
 ROOT = Path(__file__).resolve().parent
 PROCESSED_DIR = ROOT / "data" / "processed"
+PROCESSED_AU_DIR = ROOT / "data" / "processed_au"
 PROCESSED_AU_PARTIAL_DIR = ROOT / "data" / "processed_au_partial"
 SAMPLE_DATA_DIR = ROOT / "data" / "sample"
 ACCESS_ENV = "_".join(["NZ", "REPORT", "ACCESS"])
@@ -37,6 +38,7 @@ ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
 DEFAULT_DATA_PROJECT = "anz-labour-day-2026"
 DATASET_DIRS = {
     "processed": PROCESSED_DIR,
+    "processed_au": PROCESSED_AU_DIR,
     "processed_au_partial": PROCESSED_AU_PARTIAL_DIR,
 }
 
@@ -63,6 +65,9 @@ OPTIONAL_FILES = [
     "merchant_activation_summary.csv",
     "merchant_activation_detail.csv",
     "industry_period_summary.csv",
+    "material_summary.csv",
+    "material_period_summary.csv",
+    "partial_status.csv",
 ]
 
 PERIOD_COLORS = {
@@ -680,7 +685,56 @@ def render_method_card(title: str, items: list[str]) -> None:
     )
 
 
-def render_external_context_cards() -> None:
+def render_external_context_cards(country: str = "NZ") -> None:
+    if country == "AU":
+        cards = [
+            {
+                "kicker": "入境客流恢复",
+                "title": "澳洲短期入境游客在 2026 年 3 月继续修复",
+                "body": (
+                    "ABS 2026 年 3 月 OAD 显示，澳大利亚短期访客入境 818,990 人次，同比 +7.6%；"
+                    "中国为当月第二大来源市场，短期访客入境 87,560 人次。"
+                ),
+                "source": "ABS Overseas Arrivals and Departures, Mar 2026",
+                "url": "https://www.abs.gov.au/statistics/industry/tourism-and-transport/overseas-arrivals-and-departures-australia/latest-release",
+            },
+            {
+                "kicker": "消费大盘",
+                "title": "澳洲国际旅游消费强于人次，解释高客单价更合适",
+                "body": (
+                    "TRA 年度至 2025 年 12 月 IVS 显示，国际游客在澳消费 A$39.2bn，同比 +19%；"
+                    "中国仍是高消费来源市场，适合作为高客单 retail / luxury 场景的外部背景。"
+                ),
+                "source": "Tourism Research Australia IVS, YE Dec 2025",
+                "url": "https://www.tra.gov.au/en/international/international-tourism-results",
+            },
+            {
+                "kicker": "汇率口径",
+                "title": "澳元兑人民币走强可能压低支付频率，同时抬高人民币 GMV",
+                "body": (
+                    "RBA 发布的 AUD/CNY 在 2026 年 5 月中旬约 4.91 人民币/澳元。"
+                    "对中国消费者而言，澳元走强会提高人民币体感成本，可能抑制交易频率或小额消费；"
+                    "同时本报告 GMV 以人民币汇总，汇率也会抬高人民币金额。澳洲页应优先用交易笔数、活跃用户和本地币复核判断真实热度。"
+                ),
+                "source": "Reserve Bank of Australia Exchange Rates",
+                "url": "https://www.rba.gov.au/statistics/frequency/exchange-rates.html",
+            },
+        ]
+        card_html = ["<div class='executive-insight-stack'>"]
+        for card in cards:
+            card_html.append(
+                "<div class='executive-insight-card'>"
+                f"<div class='executive-insight-kicker'>{escape(card['kicker'])}</div>"
+                f"<div class='executive-insight-title'>{escape(card['title'])}</div>"
+                f"<div class='executive-insight-body'>{escape(card['body'])}</div>"
+                f"<div class='muted-note'>来源：<a href='{escape(card['url'])}' target='_blank'>{escape(card['source'])}</a></div>"
+                "</div>"
+            )
+        card_html.append("</div>")
+        st.markdown("#### 外部旅游与汇率背景信号")
+        st.markdown("".join(card_html), unsafe_allow_html=True)
+        return
+
     cards = [
         {
             "kicker": "入境客流恢复",
@@ -728,6 +782,7 @@ def render_external_context_cards() -> None:
     st.markdown("".join(card_html), unsafe_allow_html=True)
 
 
+
 def fmt_signed_pct(value: float | int | None) -> str:
     if value is None or pd.isna(value):
         return "N/A"
@@ -754,7 +809,160 @@ def render_executive_insight_cards(
     coverage_frame: pd.DataFrame,
     period_summary_frame: pd.DataFrame,
     compact: bool = False,
+    country: str = "NZ",
 ) -> None:
+    if country == "AU":
+        cards: list[dict[str, str]] = []
+        labour_gmv_yoy = growth(current_row.get("gmv_cny"), yoy_row.get("gmv_cny"))
+        labour_txn_yoy = growth(current_row.get("txn_count"), yoy_row.get("txn_count"))
+        labour_user_yoy = growth(current_row.get("active_users"), yoy_row.get("active_users"))
+        labour_aov_yoy = growth(current_row.get("aov_cny"), yoy_row.get("aov_cny"))
+        baseline_gmv_uplift = growth(current_row.get("avg_daily_gmv_cny"), baseline_row.get("avg_daily_gmv_cny"))
+        baseline_txn_uplift = growth(current_row.get("avg_daily_txn"), baseline_row.get("avg_daily_txn"))
+
+        cards.append(
+            {
+                "kicker": "增长判断",
+                "title": "澳洲五一不是交易笔数拉升，而是 GMV 温和抬升",
+                "body": (
+                    f"Labour GMV 同比 {fmt_signed_pct(labour_gmv_yoy)}，交易笔数同比 {fmt_signed_pct(labour_txn_yoy)}，"
+                    f"活跃交易用户同比 {fmt_signed_pct(labour_user_yoy)}，AOV 同比 {fmt_signed_pct(labour_aov_yoy)}。"
+                    "这更像是高客单品类和人民币金额口径支撑 GMV，而澳元走强带来的体感成本上升可能压制了支付频率。"
+                ),
+            }
+        )
+        cards.append(
+            {
+                "kicker": "Baseline 对比",
+                "title": "相对 4 月日常盘，GMV 强于交易强度",
+                "body": (
+                    f"相较 2026 年 4 月非 Labour baseline，日均 GMV {fmt_signed_pct(baseline_gmv_uplift)}，"
+                    f"日均交易笔数 {fmt_signed_pct(baseline_txn_uplift)}。"
+                    "因此澳洲页应把结论写成 spend intensity 改善，而不是 footfall/transaction surge。"
+                ),
+            }
+        )
+        if not period_summary_frame.empty:
+            cny = get_period(period_summary_frame, "holiday_2026_cny")
+            golden = get_period(period_summary_frame, "holiday_2025_golden_week")
+            if not cny.empty and not golden.empty:
+                cards.append(
+                    {
+                        "kicker": "假期层级",
+                        "title": "五一低于春节和国庆，不能按 NZ 的强假期叙事套用",
+                        "body": (
+                            f"五一日均 GMV RMB {float(current_row.get('avg_daily_gmv_cny')) / 1_000_000:.1f}M，"
+                            f"低于春节 RMB {float(cny.get('avg_daily_gmv_cny')) / 1_000_000:.1f}M "
+                            f"和国庆 RMB {float(golden.get('avg_daily_gmv_cny')) / 1_000_000:.1f}M。"
+                            "澳洲更适合讲结构性高客单，而不是把五一包装成年度峰值。"
+                        ),
+                    }
+                )
+        if not activation_frame.empty:
+            retained = activation_frame[activation_frame["activation_segment"].eq("retained_active")]
+            incremental = activation_frame[activation_frame["activation_segment"].isin(["new_coverage", "reactivated_dormant"])]
+            churned = activation_frame[activation_frame["activation_segment"].eq("churned_zeroed")]
+            retained_gmv_yoy = growth(
+                retained["holiday_2026_gmv_cny"].sum() if not retained.empty else None,
+                retained["holiday_2025_gmv_cny"].sum() if not retained.empty else None,
+            )
+            cards.append(
+                {
+                    "kicker": "商户覆盖",
+                    "title": "基本盘回落，由新覆盖和回流商户抵消",
+                    "body": (
+                        f"Retained active 商户 GMV 同比 {fmt_signed_pct(retained_gmv_yoy)}；"
+                        f"new coverage + reactivated dormant 贡献当期 GMV 的 {fmt_pct(float(incremental['current_gmv_share'].sum()))}，"
+                        f"churned/zeroed 商户对应去年同期 GMV RMB {float(churned['holiday_2025_gmv_cny'].sum()) / 1_000_000:.1f}M。"
+                    ),
+                }
+            )
+        if not city_frame.empty:
+            city_plot = city_frame.copy()
+            city_total = float(pd.to_numeric(city_plot["gmv_cny"], errors="coerce").fillna(0).sum())
+            city_plot["gmv_share"] = pd.to_numeric(city_plot["gmv_cny"], errors="coerce").fillna(0) / city_total if city_total else 0
+            top_city = city_plot.sort_values("gmv_cny", ascending=False).iloc[0]
+            top5_share = float(city_plot.sort_values("gmv_cny", ascending=False).head(5)["gmv_cny"].sum() / city_total) if city_total else float("nan")
+            cards.append(
+                {
+                    "kicker": "城市结构",
+                    "title": "Sydney 是澳洲核心盘，但地理未分类仍需谨慎标注",
+                    "body": (
+                        f"{top_city['business_city']} 贡献 2026 五一 GMV 的 {fmt_pct(float(top_city['gmv_share']))}，"
+                        f"前 5 城市合计贡献 {fmt_pct(top5_share)}。"
+                        "当前澳洲 geo match 约八成，未分类城市的高占比会影响城市解读。"
+                    ),
+                }
+            )
+        if not industry_period_frame.empty:
+            current_industry = industry_period_frame[industry_period_frame["period_label"].astype(str).eq("holiday_2026_labour")].copy()
+            if not current_industry.empty:
+                major = (
+                    current_industry.groupby("major_industry", as_index=False)
+                    .agg(gmv_cny=("gmv_cny", "sum"), txn_count=("txn_count", "sum"))
+                    .sort_values("gmv_cny", ascending=False)
+                )
+                total_gmv = float(major["gmv_cny"].sum())
+                total_txn = float(major["txn_count"].sum())
+                retail_share = float(major.head(3)["gmv_cny"].sum() / total_gmv) if total_gmv else float("nan")
+                frequency_categories = major[major["major_industry"].isin(["食品/超市/便利店", "餐饮类"])]
+                frequency_txn_share = float(frequency_categories["txn_count"].sum() / total_txn) if total_txn else float("nan")
+                cards.append(
+                    {
+                        "kicker": "行业结构",
+                        "title": "高客单零售解释 GMV，高频民生解释交易笔数",
+                        "body": (
+                            f"GMV 前三大行业贡献 {fmt_pct(retail_share)}，以综合/百货、礼品珠宝专卖、服饰鞋帽为主；"
+                            f"食品/超市/便利店 + 餐饮贡献交易笔数 {fmt_pct(frequency_txn_share)}。"
+                            "这与澳洲头部 luxury / retail 商户占比较高的实际数据一致。"
+                        ),
+                    }
+                )
+        if not top_frame.empty:
+            total_current_gmv = float(current_row.get("gmv_cny")) if pd.notna(current_row.get("gmv_cny")) else 0.0
+            top10_share = float(pd.to_numeric(top_frame.head(10)["gmv_cny"], errors="coerce").fillna(0).sum() / total_current_gmv) if total_current_gmv else float("nan")
+            top20_share = float(pd.to_numeric(top_frame["gmv_cny"], errors="coerce").fillna(0).sum() / total_current_gmv) if total_current_gmv else float("nan")
+            cards.append(
+                {
+                    "kicker": "头部商户",
+                    "title": "头部商户集中度高，解释时要避免外推到全市场",
+                    "body": (
+                        f"前 10 商户贡献 2026 五一 GMV 的 {fmt_pct(top10_share)}，前 20 贡献 {fmt_pct(top20_share)}。"
+                        "Chanel、Hermes、UMALL、Epharmacy 等商户会显著影响 GMV 和 AOV。"
+                    ),
+                }
+            )
+
+        container_class = "executive-insight-stack" if compact else "executive-insight-grid"
+        card_html = [f"<div class='{container_class}'>"]
+        for card in cards[:7]:
+            card_html.append(
+                "<div class='executive-insight-card'>"
+                f"<div class='executive-insight-kicker'>{escape(card['kicker'])}</div>"
+                f"<div class='executive-insight-title'>{escape(card['title'])}</div>"
+                f"<div class='executive-insight-body'>{escape(card['body'])}</div>"
+                "</div>"
+            )
+        card_html.append("</div>")
+        st.markdown("#### 核心洞察")
+        st.markdown("".join(card_html), unsafe_allow_html=True)
+
+        geo_match = coverage_metric(coverage_frame, "Geo match rate")
+        mcc_match = coverage_metric(coverage_frame, "MCC match rate")
+        unmatched = city_frame[city_frame.get("business_city", pd.Series(dtype="object")).astype(str).isin(["未分类", "Unclassified"])] if not city_frame.empty else pd.DataFrame()
+        city_total = float(pd.to_numeric(city_frame.get("gmv_cny", pd.Series(dtype="float64")), errors="coerce").fillna(0).sum()) if not city_frame.empty else 0.0
+        unmatched_share = float(pd.to_numeric(unmatched.get("gmv_cny", pd.Series(dtype="float64")), errors="coerce").fillna(0).sum() / city_total) if city_total else float("nan")
+        st.markdown(
+            (
+                f"<div class='executive-guardrail'>数据边界：MCC match {fmt_pct(mcc_match)}，"
+                f"geo match {fmt_pct(geo_match)}，未分类城市 GMV {fmt_pct(unmatched_share)}；"
+                "AU 01 明细和 02 活跃用户均按 OFFLINE/BOTH 且剔除 ZHENXING 的核心口径接入；"
+                "交易明细表与用户聚合表仍有少量金额口径差。</div>"
+            ),
+            unsafe_allow_html=True,
+        )
+        return
+
     cards: list[dict[str, str]] = []
 
     cards.append(
@@ -916,6 +1124,7 @@ def render_executive_insight_cards(
         ),
         unsafe_allow_html=True,
     )
+
 
 
 def select_dataset() -> tuple[str, str]:
@@ -1279,28 +1488,38 @@ require_password()
 country = st.sidebar.selectbox("国家/地区", ["新西兰", "澳大利亚"], index=0)
 
 if country == "澳大利亚":
-    au_frames = load_dataset_or_stop("processed_au_partial")
-    require_dataset_files(
-        au_frames,
-        ["summary_kpis.csv", "daily_trend.csv", "period_summary.csv", "period_daily.csv"],
-        "澳大利亚聚合预览数据不完整。",
-    )
-    au_source_label = data_source_label("processed_au_partial", "AU 聚合预览数据")
-    st.sidebar.markdown("### 范围")
-    st.sidebar.write("当前为澳大利亚聚合预览：01a + 02 + 03。")
-    st.sidebar.write("完整城市、行业和商户视图等待 01 明细审批完成后启用。")
-    st.sidebar.markdown("---")
-    st.sidebar.caption(f"当前使用：{au_source_label}")
-    render_au_partial_report(au_frames, au_source_label)
-    st.stop()
-
-dataset_name, source_label = select_dataset()
-frames = load_dataset_or_stop(dataset_name)
+    frames = load_dataset_or_stop("processed_au")
+    has_full_au = all(name.replace(".csv", "") in frames for name in REQUIRED_FILES)
+    if has_full_au:
+        dataset_name = "processed_au"
+        source_label = data_source_label("processed_au", "AU 完整聚合数据")
+    else:
+        au_frames = load_dataset_or_stop("processed_au_partial")
+        require_dataset_files(
+            au_frames,
+            ["summary_kpis.csv", "daily_trend.csv", "period_summary.csv", "period_daily.csv"],
+            "澳大利亚聚合预览数据不完整。",
+        )
+        au_source_label = data_source_label("processed_au_partial", "AU 聚合预览数据")
+        st.sidebar.markdown("### 范围")
+        st.sidebar.write("当前为澳大利亚聚合预览：01a + 02 + 03。")
+        st.sidebar.write("完整城市、行业和商户视图等待 01 明细审批完成后启用。")
+        st.sidebar.markdown("---")
+        st.sidebar.caption(f"当前使用：{au_source_label}")
+        render_au_partial_report(au_frames, au_source_label)
+        st.stop()
+else:
+    dataset_name, source_label = select_dataset()
+    frames = load_dataset_or_stop(dataset_name)
 require_dataset_files(frames, REQUIRED_FILES, "报告数据不完整。")
 
 st.sidebar.markdown("### 范围")
-st.sidebar.write("当前报告聚焦新西兰五一假期与相关对比窗口。")
-st.sidebar.write("澳大利亚后续复用同一套 SQL、处理脚本和页面结构。")
+if country == "澳大利亚":
+    st.sidebar.write("当前报告使用澳大利亚完整 01 merchant-day 明细、02 用户聚合和 03 物料聚合。")
+    st.sidebar.write("AU 01 明细和 02 用户聚合均按 OFFLINE/BOTH 且剔除 ZHENXING 的核心口径接入。")
+else:
+    st.sidebar.write("当前报告聚焦新西兰五一假期与相关对比窗口。")
+    st.sidebar.write("澳大利亚复用同一套 SQL、处理脚本和页面结构。")
 st.sidebar.markdown("---")
 st.sidebar.caption(f"当前使用：{source_label}")
 
@@ -1356,11 +1575,13 @@ period_catalog = localize_period_column(period_catalog)
 industry_period = localize_period_column(industry_period)
 available_summary = period_summary[period_summary["period_status"].astype(str).str.contains("available|temporary", regex=True, na=False)].copy()
 
+report_country_label = "AU" if country == "澳大利亚" else "NZ"
+
 current = get_period(period_summary, "holiday_2026_labour")
 yoy = get_period(period_summary, "holiday_2025_labour")
 baseline = get_period(period_summary, "baseline_2026_apr_non_labour")
 
-st.title("NZ 五一假期 WeChat Pay 热度报告")
+st.title(f"{report_country_label} 五一假期 WeChat Pay 热度报告")
 st.caption("日均交易为主指标，GMV 作为规模指标，客单价与商户频次共同解释交易结构。")
 
 tabs = st.tabs(["总览", "时段深挖", "城市", "行业", "交易用户", "商户激活", "头部商户", "方法与边界"])
@@ -1396,7 +1617,7 @@ with tabs[0]:
         fig.update_yaxes(title_text="活跃商户数", secondary_y=True)
         fig.update_layout(title="各时段日均交易强度与商户覆盖")
         st.plotly_chart(chart_layout(fig, height=410), width="stretch")
-        render_external_context_cards()
+        render_external_context_cards(report_country_label)
     with right:
         render_executive_insight_cards(
             current,
@@ -1409,6 +1630,7 @@ with tabs[0]:
             coverage,
             period_summary,
             compact=True,
+            country=report_country_label,
         )
         pending = period_catalog[period_catalog["status"].astype(str).str.contains("pending", na=False)] if not period_catalog.empty else pd.DataFrame()
         if not pending.empty:
