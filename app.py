@@ -138,6 +138,7 @@ COLUMN_LABELS_ZH = {
     "txn_count": "交易笔数",
     "avg_daily_txn": "日均交易笔数",
     "active_merchants": "活跃商户数",
+    "txn_share": "交易笔数占比",
     "merchant_day_count": "活跃商户日",
     "merchant_frequency": "商户日均频次",
     "active_users": "活跃交易用户数",
@@ -1763,6 +1764,7 @@ with tabs[2]:
     top_n = st.slider("展示城市数", min_value=5, max_value=min(20, max(len(region_plot), 5)), value=min(10, len(region_plot)), step=1)
     chart_region = region_plot.head(top_n).sort_values("txn_count", ascending=True)
     city_total = float(region_plot["txn_count"].sum())
+    region_plot["txn_share"] = region_plot["txn_count"] / city_total if city_total else 0
     top_share = float(region_plot.head(top_n)["txn_count"].sum() / city_total) if city_total else float("nan")
     unmatched = region_plot[region_plot["business_city"].astype(str).isin(["未分类", "Unclassified"])]
     unmatched_share = float(unmatched["txn_count"].sum() / city_total) if city_total and not unmatched.empty else float("nan")
@@ -1777,7 +1779,7 @@ with tabs[2]:
             title=f"交易笔数前 {top_n} 城市",
             labels={"txn_count": "交易笔数", "business_city": "", "gmv_cny": "GMV（元）"},
             color_continuous_scale=["#E0F2FE", "#0369A1"],
-            custom_data=["gmv_cny", "active_merchants", "geo_match_rate"],
+            custom_data=["gmv_cny", "active_merchants", "txn_share"],
         )
         fig.update_traces(
             hovertemplate=(
@@ -1785,7 +1787,7 @@ with tabs[2]:
                 "交易笔数：%{x:,.0f}<br>"
                 "GMV：RMB %{customdata[0]:,.0f}<br>"
                 "活跃商户数：%{customdata[1]:,.0f}<br>"
-                "城市匹配率：%{customdata[2]:.1%}<extra></extra>"
+                "交易笔数占比：%{customdata[2]:.1%}<extra></extra>"
             )
         )
         st.plotly_chart(chart_layout(fig, height=430), width="stretch")
@@ -1855,11 +1857,11 @@ with tabs[2]:
         st.metric(f"前 {top_n} 城市交易笔数占比", fmt_pct(top_share))
         if not unmatched.empty:
             st.metric("未分类城市交易笔数占比", fmt_pct(unmatched_share))
-        city_display = region_plot.copy()
+        city_display = region_plot.drop(columns=["geo_match_rate"], errors="ignore").copy()
         city_display["gmv_cny"] = city_display["gmv_cny"].map(lambda value: f"{float(value):,.0f}")
         city_display["txn_count"] = city_display["txn_count"].map(lambda value: f"{float(value):,.0f}")
         city_display["active_merchants"] = city_display["active_merchants"].map(lambda value: f"{float(value):,.0f}")
-        for col in ["geo_match_rate", "yoy_gmv_growth", "pre_uplift"]:
+        for col in ["txn_share", "yoy_gmv_growth", "pre_uplift"]:
             if col in city_display:
                 city_display[col] = city_display[col].apply(fmt_pct)
         st.dataframe(display_table(city_display), hide_index=True, width="stretch")
