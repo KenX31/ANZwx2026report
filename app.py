@@ -85,6 +85,14 @@ PERIOD_COLORS = {
     "2026 April Non-Labour Baseline": "#7C3AED",
 }
 
+OVERVIEW_PERIOD_ORDER = {
+    "holiday_2025_labour": 1,
+    "holiday_2025_golden_week": 2,
+    "holiday_2026_cny": 3,
+    "baseline_2026_apr_non_labour": 4,
+    "holiday_2026_labour": 5,
+}
+
 
 st.set_page_config(
     page_title="澳新假期支付热度报告",
@@ -1598,7 +1606,11 @@ with tabs[0]:
     left, right = st.columns([1.12, 1])
     with left:
         plot_summary = available_summary.copy()
-        plot_summary["active_merchants"] = pd.to_numeric(plot_summary.get("active_merchants"), errors="coerce")
+        plot_summary["overview_order"] = plot_summary["period_label"].map(OVERVIEW_PERIOD_ORDER).fillna(999)
+        plot_summary = plot_summary.sort_values(["overview_order", "period_label"])
+        days = pd.to_numeric(plot_summary.get("days"), errors="coerce")
+        merchant_day_count = pd.to_numeric(plot_summary.get("merchant_day_count"), errors="coerce")
+        plot_summary["avg_daily_active_merchants"] = merchant_day_count / days.replace(0, np.nan)
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         fig.add_bar(
             x=plot_summary["period_name"],
@@ -1608,14 +1620,14 @@ with tabs[0]:
         )
         fig.add_scatter(
             x=plot_summary["period_name"],
-            y=plot_summary["active_merchants"],
-            name="活跃商户数",
+            y=plot_summary["avg_daily_active_merchants"],
+            name="日均活跃商户数",
             mode="lines+markers",
             marker_color="#D97706",
             secondary_y=True,
         )
         fig.update_yaxes(title_text="日均交易笔数", secondary_y=False)
-        fig.update_yaxes(title_text="活跃商户数", secondary_y=True)
+        fig.update_yaxes(title_text="日均活跃商户数", secondary_y=True)
         fig.update_layout(title="各时段日均交易强度与商户覆盖")
         st.plotly_chart(chart_layout(fig, height=410), width="stretch")
         render_external_context_cards(report_country_label)
