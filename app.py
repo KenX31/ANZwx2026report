@@ -36,6 +36,7 @@ LEGACY_ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD", "SHA" + "2
 ACCESS_SECRET_NAMES = (ACCESS_ENV, LEGACY_ACCESS_ENV)
 ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
 DEFAULT_DATA_PROJECT = "anz-labour-day-2026"
+APP_DATA_CACHE_BUSTER = "2026-05-13-au-core-v3"
 DATASET_DIRS = {
     "processed": PROCESSED_DIR,
     "processed_au": PROCESSED_AU_DIR,
@@ -495,11 +496,11 @@ def dataset_version(dataset_name: str) -> str:
     backend = get_data_backend()
     configured_version = get_secret_value("DATA_VERSION").strip()
     if configured_version:
-        return f"{backend}:{get_data_project()}:{configured_version}:{dataset_name}"
+        return f"{backend}:{get_data_project()}:{configured_version}:{APP_DATA_CACHE_BUSTER}:{dataset_name}"
     if backend == "github_private":
         manifest_version = private_manifest_version()
         ref = get_secret_value("DATA_GITHUB_REF").strip() or "main"
-        return f"{backend}:{get_data_project()}:{ref}:{manifest_version}:{dataset_name}"
+        return f"{backend}:{get_data_project()}:{ref}:{manifest_version}:{APP_DATA_CACHE_BUSTER}:{dataset_name}"
     if backend in {"local", "sample"}:
         return local_dataset_version(dataset_name, backend)
     raise DataLoadError(f"不支持的数据源类型：{backend}")

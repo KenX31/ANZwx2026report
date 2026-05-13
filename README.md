@@ -30,7 +30,7 @@ DATA_GITHUB_TOKEN = "github_pat_read_only"
 DATA_GITHUB_REPO = "KenX31/anzdata"
 DATA_GITHUB_REF = "main"
 DATA_PROJECT = "anz-labour-day-2026"
-DATA_VERSION = "2026-05-13-au-full-v2"
+DATA_VERSION = "2026-05-13-au-core-v3"
 ```
 
 The app also accepts `NZ_REPORT_ACCESS = "plain-access-key"` for local testing,
