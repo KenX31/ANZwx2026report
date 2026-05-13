@@ -2111,12 +2111,21 @@ with tabs[5]:
         reactivated = activation_plot[activation_plot["activation_segment"].eq("reactivated_dormant")]
         new_coverage = activation_plot[activation_plot["activation_segment"].eq("new_coverage")]
         retained = activation_plot[activation_plot["activation_segment"].eq("retained_active")]
+        churned = activation_plot[activation_plot["activation_segment"].eq("churned_zeroed")]
+        current_active_total = float(current_segments["merchant_count"].sum())
+        previous_active_total = float(
+            activation_plot[activation_plot["holiday_2025_txn_count"].gt(0)]["merchant_count"].sum()
+        )
+        retained_count = float(retained["merchant_count"].sum() if not retained.empty else 0)
+        reactivated_count = float(reactivated["merchant_count"].sum() if not reactivated.empty else 0)
+        new_coverage_count = float(new_coverage["merchant_count"].sum() if not new_coverage.empty else 0)
+        churned_count = float(churned["merchant_count"].sum() if not churned.empty else 0)
 
         metric_cols = st.columns(4)
-        metric_cols[0].metric("留存活跃商户", fmt_num(retained["merchant_count"].sum() if not retained.empty else 0))
-        metric_cols[1].metric("回流存量商户", fmt_num(reactivated["merchant_count"].sum() if not reactivated.empty else 0))
-        metric_cols[2].metric("新增覆盖商户", fmt_num(new_coverage["merchant_count"].sum() if not new_coverage.empty else 0))
-        metric_cols[3].metric("新增+回流 GMV 占比", fmt_pct(current_segments[current_segments["activation_segment"].isin(["new_coverage", "reactivated_dormant"])]["current_gmv_share"].sum()))
+        metric_cols[0].metric("留存活跃商户", fmt_num(retained_count), f"占2026活跃商户 {fmt_pct(retained_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
+        metric_cols[1].metric("回流存量商户", fmt_num(reactivated_count), f"占2026活跃商户 {fmt_pct(reactivated_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
+        metric_cols[2].metric("新增覆盖商户", fmt_num(new_coverage_count), f"占2026活跃商户 {fmt_pct(new_coverage_count / current_active_total if current_active_total else float('nan'))}", delta_color="off")
+        metric_cols[3].metric("流失/归零商户", fmt_num(churned_count), f"占2025活跃商户 {fmt_pct(churned_count / previous_active_total if previous_active_total else float('nan'))}", delta_color="off")
 
         share_long = current_segments.melt(
             id_vars=["segment_name", "sort_order"],
