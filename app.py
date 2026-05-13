@@ -1762,9 +1762,9 @@ with tabs[2]:
     region_plot["active_merchants"] = pd.to_numeric(region_plot["active_merchants"], errors="coerce").fillna(0)
     region_plot = region_plot.sort_values("txn_count", ascending=False)
     top_n = st.slider("展示城市数", min_value=5, max_value=min(20, max(len(region_plot), 5)), value=min(10, len(region_plot)), step=1)
-    chart_region = region_plot.head(top_n).sort_values("txn_count", ascending=True)
     city_total = float(region_plot["txn_count"].sum())
     region_plot["txn_share"] = region_plot["txn_count"] / city_total if city_total else 0
+    chart_region = region_plot.head(top_n).sort_values("txn_count", ascending=True)
     top_share = float(region_plot.head(top_n)["txn_count"].sum() / city_total) if city_total else float("nan")
     unmatched = region_plot[region_plot["business_city"].astype(str).isin(["未分类", "Unclassified"])]
     unmatched_share = float(unmatched["txn_count"].sum() / city_total) if city_total and not unmatched.empty else float("nan")
