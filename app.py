@@ -846,6 +846,99 @@ def avg_daily_active_merchants(row: pd.Series) -> float:
     return float(merchant_days) / float(days)
 
 
+AU_CITY_STATE_OVERRIDES = {
+    "adelaide": "SA",
+    "bendigo": "VIC",
+    "brisbane": "QLD",
+    "canberra": "ACT",
+    "cairns": "QLD",
+    "darwin": "NT",
+    "gold coast": "QLD",
+    "hobart": "TAS",
+    "hume": "VIC",
+    "jervis bay": "ACT",
+    "knox": "VIC",
+    "ku-ring-gai": "NSW",
+    "mackay": "QLD",
+    "melbourne": "VIC",
+    "mid north coast": "NSW",
+    "mildura": "VIC",
+    "mosman": "NSW",
+    "mornington peninsula": "VIC",
+    "other territories": "ACT",
+    "perth": "WA",
+    "port hedland": "WA",
+    "south australia - south east": "SA",
+    "south east": "SA",
+    "sunshine coast": "QLD",
+    "sydney": "NSW",
+    "townsville": "QLD",
+    "warrnambool and south west": "VIC",
+    "west and north west": "TAS",
+    "western australia - wheat belt": "WA",
+    "wide bay": "QLD",
+}
+
+
+def infer_au_state_from_city(value: object) -> str:
+    city = str(value or "").strip()
+    if not city or city in {"未分类", "Unclassified", "nan", "None"}:
+        return "Unclassified"
+    return AU_CITY_STATE_OVERRIDES.get(city.casefold(), "Unclassified")
+
+
+def weighted_average(frame: pd.DataFrame, value_col: str, weight_col: str) -> float:
+    if value_col not in frame or weight_col not in frame:
+        return float("nan")
+    values = pd.to_numeric(frame[value_col], errors="coerce")
+    weights = pd.to_numeric(frame[weight_col], errors="coerce").fillna(0)
+    valid = values.notna() & weights.gt(0)
+    if not valid.any():
+        return float("nan")
+    return float((values[valid] * weights[valid]).sum() / weights[valid].sum())
+
+
+def build_au_state_summary_from_city_region(region_frame: pd.DataFrame) -> pd.DataFrame:
+    if "business_state" in region_frame or "business_city" not in region_frame:
+        return region_frame
+
+    city_frame = region_frame.copy()
+    city_frame["business_state"] = city_frame["business_city"].apply(infer_au_state_from_city)
+    for col in ["gmv_cny", "txn_count", "active_merchants"]:
+        if col in city_frame:
+            city_frame[col] = pd.to_numeric(city_frame[col], errors="coerce").fillna(0)
+
+    rows: list[dict[str, object]] = []
+    for state, group in city_frame.groupby("business_state", dropna=False):
+        row: dict[str, object] = {
+            "business_state": state,
+            "gmv_cny": float(group.get("gmv_cny", pd.Series(dtype="float64")).sum()),
+            "txn_count": float(group.get("txn_count", pd.Series(dtype="float64")).sum()),
+            "active_merchants": float(group.get("active_merchants", pd.Series(dtype="float64")).sum()),
+        }
+        row["state_match_rate"] = 0.0 if state == "Unclassified" else 1.0
+        for col, weight_col in {
+            "yoy_gmv_growth": "gmv_cny",
+            "pre_uplift": "gmv_cny",
+            "txn_yoy_growth": "txn_count",
+            "pre_txn_uplift": "txn_count",
+        }.items():
+            if col in group:
+                row[col] = weighted_average(group, col, weight_col)
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def build_au_drilldown_from_city_region(region_frame: pd.DataFrame) -> pd.DataFrame:
+    if "business_city" not in region_frame:
+        return pd.DataFrame()
+    drill = region_frame.copy()
+    if "business_state" not in drill:
+        drill["business_state"] = drill["business_city"].apply(infer_au_state_from_city)
+    return drill[drill["business_state"].astype(str).ne("Unclassified")].copy()
+
+
 def render_executive_insight_cards(
     current_row: pd.Series,
     yoy_row: pd.Series,
@@ -1769,14 +1862,19 @@ with tabs[2]:
     geo_dim_col = "business_state" if is_au_report else "business_city"
     geo_match_col = "state_match_rate" if is_au_report else "geo_match_rate"
     geo_label = "州" if is_au_report else "城市"
+    geo_section_label = "地理" if is_au_report else "城市"
     geo_top_default = "头部州" if is_au_report else "头部城市"
-    st.subheader(f"{geo_label}拆解")
+    st.subheader(f"{geo_section_label}拆解")
     if is_au_report:
         st.markdown('<div class="section-caption">澳洲地理维度按 state_code 展示，州归属优先使用 postcode 匹配；未匹配时再看地址里的州缩写、city/region 线索和已推断 business_city。州内可下钻查看原 city 分类。</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="section-caption">地理维度仅展示 business_city 层级，并沿用 Wechat-Pay-ANZ-MAP 的城市匹配与标准化逻辑。</div>', unsafe_allow_html=True)
     render_insights(insights, "region", "执行与策略备注")
     region_plot = region.copy()
+    fallback_drilldown = pd.DataFrame()
+    if is_au_report and "business_state" not in region_plot and "business_city" in region_plot:
+        fallback_drilldown = build_au_drilldown_from_city_region(region_plot)
+        region_plot = build_au_state_summary_from_city_region(region_plot)
     if geo_dim_col not in region_plot:
         if geo_dim_col == "business_city" and "city" in region_plot:
             region_plot[geo_dim_col] = region_plot["city"]
@@ -1904,10 +2002,11 @@ with tabs[2]:
                 city_display[col] = city_display[col].apply(fmt_pct)
         st.dataframe(display_table(city_display), hide_index=True, width="stretch")
 
-    if is_au_report and not geography_drilldown.empty:
+    au_drilldown = geography_drilldown if not geography_drilldown.empty else fallback_drilldown
+    if is_au_report and not au_drilldown.empty:
         st.markdown("#### 州内城市下钻")
         st.markdown('<div class="section-caption">下钻城市优先来自同一套 postcode/地址维表结果；地址无法识别时，再用地址文本和商户名里的城市线索补救，且必须与当前州一致。</div>', unsafe_allow_html=True)
-        drill = geography_drilldown.copy()
+        drill = au_drilldown.copy()
         drill["gmv_cny"] = pd.to_numeric(drill["gmv_cny"], errors="coerce").fillna(0)
         drill["txn_count"] = pd.to_numeric(drill["txn_count"], errors="coerce").fillna(0)
         drill["active_merchants"] = pd.to_numeric(drill["active_merchants"], errors="coerce").fillna(0)
