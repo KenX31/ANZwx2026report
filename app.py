@@ -36,7 +36,7 @@ LEGACY_ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD", "SHA" + "2
 ACCESS_SECRET_NAMES = (ACCESS_ENV, LEGACY_ACCESS_ENV)
 ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
 DEFAULT_DATA_PROJECT = "anz-labour-day-2026"
-APP_DATA_CACHE_BUSTER = "2026-05-14-au-geo-state-drilldown-v1"
+APP_DATA_CACHE_BUSTER = "2026-05-14-geo-table-txn-priority-v1"
 DATASET_DIRS = {
     "processed": PROCESSED_DIR,
     "processed_au": PROCESSED_AU_DIR,
@@ -154,7 +154,7 @@ COLUMN_LABELS_ZH = {
     "state_txn_share": "州内交易笔数占比",
     "state_gmv_share": "州内 GMV 占比",
     "yoy_gmv_growth": "GMV 同比",
-    "pre_uplift": "较基线提升",
+    "pre_uplift": "GMV 较基线提升",
     "txn_yoy_growth": "交易笔数同比",
     "pre_txn_uplift": "交易笔数较基线提升",
     "major_industry": "行业大类",
@@ -212,6 +212,12 @@ def localize_status_column(frame: pd.DataFrame) -> pd.DataFrame:
 
 def display_table(frame: pd.DataFrame) -> pd.DataFrame:
     return localize_status_column(localize_period_column(frame)).rename(columns=COLUMN_LABELS_ZH)
+
+
+def order_display_columns(frame: pd.DataFrame, preferred: list[str]) -> pd.DataFrame:
+    ordered = [col for col in preferred if col in frame.columns]
+    ordered.extend([col for col in frame.columns if col not in ordered])
+    return frame[ordered]
 
 
 def get_secret_value(name: str) -> str:
@@ -2000,6 +2006,20 @@ with tabs[2]:
         for col in ["txn_share", "yoy_gmv_growth", "pre_uplift", "txn_yoy_growth", "pre_txn_uplift"]:
             if col in city_display:
                 city_display[col] = city_display[col].apply(fmt_pct)
+        city_display = order_display_columns(
+            city_display,
+            [
+                geo_dim_col,
+                "txn_count",
+                "txn_yoy_growth",
+                "pre_txn_uplift",
+                "txn_share",
+                "active_merchants",
+                "gmv_cny",
+                "yoy_gmv_growth",
+                "pre_uplift",
+            ],
+        )
         st.dataframe(display_table(city_display), hide_index=True, width="stretch")
 
     au_drilldown = geography_drilldown if not geography_drilldown.empty else fallback_drilldown
@@ -2052,6 +2072,21 @@ with tabs[2]:
             for col in ["state_txn_share", "state_gmv_share", "yoy_gmv_growth", "pre_uplift", "txn_yoy_growth", "pre_txn_uplift"]:
                 if col in drill_display:
                     drill_display[col] = drill_display[col].apply(fmt_pct)
+            drill_display = order_display_columns(
+                drill_display,
+                [
+                    "business_city",
+                    "txn_count",
+                    "txn_yoy_growth",
+                    "pre_txn_uplift",
+                    "state_txn_share",
+                    "active_merchants",
+                    "gmv_cny",
+                    "yoy_gmv_growth",
+                    "pre_uplift",
+                    "business_state",
+                ],
+            )
             st.dataframe(display_table(drill_display), hide_index=True, width="stretch")
 
 with tabs[3]:
