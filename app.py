@@ -36,7 +36,7 @@ LEGACY_ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD", "SHA" + "2
 ACCESS_SECRET_NAMES = (ACCESS_ENV, LEGACY_ACCESS_ENV)
 ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
 DEFAULT_DATA_PROJECT = "anz-labour-day-2026"
-APP_DATA_CACHE_BUSTER = "2026-05-13-name-geo-v5"
+APP_DATA_CACHE_BUSTER = "2026-05-14-au-geo-state-drilldown-v1"
 DATASET_DIRS = {
     "processed": PROCESSED_DIR,
     "processed_au": PROCESSED_AU_DIR,
@@ -66,6 +66,7 @@ OPTIONAL_FILES = [
     "merchant_activation_summary.csv",
     "merchant_activation_detail.csv",
     "industry_period_summary.csv",
+    "geography_drilldown.csv",
     "material_summary.csv",
     "material_period_summary.csv",
     "partial_status.csv",
@@ -147,9 +148,15 @@ COLUMN_LABELS_ZH = {
     "daily_user_frequency": "每日用户交易频次",
     "aov_cny": "笔均价（元）",
     "business_city": "城市",
+    "business_state": "州",
     "geo_match_rate": "城市匹配率",
+    "state_match_rate": "州匹配率",
+    "state_txn_share": "州内交易笔数占比",
+    "state_gmv_share": "州内 GMV 占比",
     "yoy_gmv_growth": "GMV 同比",
     "pre_uplift": "较基线提升",
+    "txn_yoy_growth": "交易笔数同比",
+    "pre_txn_uplift": "交易笔数较基线提升",
     "major_industry": "行业大类",
     "industry": "行业",
     "mcc_match_rate": "MCC 匹配率",
@@ -922,18 +929,20 @@ def render_executive_insight_cards(
             )
         if not city_frame.empty:
             city_plot = city_frame.copy()
+            geo_dim_col = "business_state" if "business_state" in city_plot.columns else "business_city"
+            geo_label = "州" if geo_dim_col == "business_state" else "城市"
             city_total = float(pd.to_numeric(city_plot["gmv_cny"], errors="coerce").fillna(0).sum())
             city_plot["gmv_share"] = pd.to_numeric(city_plot["gmv_cny"], errors="coerce").fillna(0) / city_total if city_total else 0
             top_city = city_plot.sort_values("gmv_cny", ascending=False).iloc[0]
             top5_share = float(city_plot.sort_values("gmv_cny", ascending=False).head(5)["gmv_cny"].sum() / city_total) if city_total else float("nan")
             cards.append(
                 {
-                    "kicker": "城市结构",
-                    "title": "Sydney 是澳洲主要城市盘，未分类部分需单独标注",
+                    "kicker": f"{geo_label}结构",
+                    "title": f"{top_city[geo_dim_col]} 是澳洲主要{geo_label}盘，未分类部分需单独标注",
                     "body": (
-                        f"{top_city['business_city']} 贡献 2026 五一 GMV 的 {fmt_pct(float(top_city['gmv_share']))}，"
-                        f"前 5 城市合计贡献 {fmt_pct(top5_share)}。"
-                        "未分类城市来自地址或门店信息无法稳定匹配的记录，解读城市份额时需单独呈现。"
+                        f"{top_city[geo_dim_col]} 贡献 2026 五一 GMV 的 {fmt_pct(float(top_city['gmv_share']))}，"
+                        f"前 5 {geo_label}合计贡献 {fmt_pct(top5_share)}。"
+                        f"未分类{geo_label}来自地址信息无法稳定匹配的记录，解读{geo_label}份额时需单独呈现。"
                     ),
                 }
             )
@@ -990,15 +999,19 @@ def render_executive_insight_cards(
         st.markdown("#### 核心洞察")
         st.markdown("".join(card_html), unsafe_allow_html=True)
 
-        geo_match = coverage_metric(coverage_frame, "Geo match rate")
+        geo_match = coverage_metric(coverage_frame, "State match rate")
+        if pd.isna(geo_match):
+            geo_match = coverage_metric(coverage_frame, "Geo match rate")
         mcc_match = coverage_metric(coverage_frame, "MCC match rate")
-        unmatched = city_frame[city_frame.get("business_city", pd.Series(dtype="object")).astype(str).isin(["未分类", "Unclassified"])] if not city_frame.empty else pd.DataFrame()
+        geo_dim_col = "business_state" if "business_state" in city_frame.columns else "business_city"
+        geo_label = "州" if geo_dim_col == "business_state" else "城市"
+        unmatched = city_frame[city_frame.get(geo_dim_col, pd.Series(dtype="object")).astype(str).isin(["未分类", "Unclassified"])] if not city_frame.empty else pd.DataFrame()
         city_total = float(pd.to_numeric(city_frame.get("gmv_cny", pd.Series(dtype="float64")), errors="coerce").fillna(0).sum()) if not city_frame.empty else 0.0
         unmatched_share = float(pd.to_numeric(unmatched.get("gmv_cny", pd.Series(dtype="float64")), errors="coerce").fillna(0).sum() / city_total) if city_total else float("nan")
         st.markdown(
             (
                 f"<div class='executive-guardrail'>数据边界：MCC 匹配率 {fmt_pct(mcc_match)}，"
-                f"地理匹配率 {fmt_pct(geo_match)}，未分类城市 GMV {fmt_pct(unmatched_share)}；"
+                f"{geo_label}匹配率 {fmt_pct(geo_match)}，未分类{geo_label} GMV {fmt_pct(unmatched_share)}；"
                 "AU 01 明细和 02 活跃用户均按 OFFLINE/BOTH 且剔除 ZHENXING 的核心口径接入；"
                 "交易明细表与用户聚合表仍有少量金额口径差。</div>"
             ),
@@ -1167,7 +1180,6 @@ def render_executive_insight_cards(
         ),
         unsafe_allow_html=True,
     )
-
 
 
 def select_dataset() -> tuple[str, str]:
@@ -1582,6 +1594,7 @@ public_context = frames.get("public_context", pd.DataFrame())
 merchant_activation_summary = frames.get("merchant_activation_summary", pd.DataFrame())
 merchant_activation_detail = frames.get("merchant_activation_detail", pd.DataFrame())
 industry_period = frames.get("industry_period_summary", pd.DataFrame())
+geography_drilldown = frames.get("geography_drilldown", pd.DataFrame())
 
 if period_summary.empty:
     period_summary = frames.get("global_summary_kpis", summary).copy()
@@ -1619,6 +1632,8 @@ industry_period = localize_period_column(industry_period)
 available_summary = period_summary[period_summary["period_status"].astype(str).str.contains("available|temporary", regex=True, na=False)].copy()
 
 report_country_label = "AU" if country == "澳大利亚" else "NZ"
+is_au_report = report_country_label == "AU"
+geo_tab_label = "地理" if is_au_report else "城市"
 
 current = get_period(period_summary, "holiday_2026_labour")
 yoy = get_period(period_summary, "holiday_2025_labour")
@@ -1627,7 +1642,7 @@ baseline = get_period(period_summary, "baseline_2026_apr_non_labour")
 st.title(f"{report_country_label} 五一假期 WeChat Pay 热度报告")
 st.caption("日均交易为主指标，GMV 作为规模指标，笔均价与商户频次共同解释交易结构。")
 
-tabs = st.tabs(["总览", "时段深挖", "城市", "行业", "交易用户", "商户激活", "头部商户", "方法与边界"])
+tabs = st.tabs(["总览", "时段深挖", geo_tab_label, "行业", "交易用户", "商户激活", "头部商户", "方法与边界"])
 
 with tabs[0]:
     st.subheader("管理层视图")
@@ -1751,33 +1766,50 @@ with tabs[1]:
         st.dataframe(display_table(display_daily), hide_index=True, width="stretch")
 
 with tabs[2]:
-    st.subheader("城市拆解")
-    st.markdown('<div class="section-caption">地理维度仅展示 business_city 层级，并沿用 Wechat-Pay-ANZ-MAP 的城市匹配与标准化逻辑。</div>', unsafe_allow_html=True)
+    geo_dim_col = "business_state" if is_au_report else "business_city"
+    geo_match_col = "state_match_rate" if is_au_report else "geo_match_rate"
+    geo_label = "州" if is_au_report else "城市"
+    geo_top_default = "头部州" if is_au_report else "头部城市"
+    st.subheader(f"{geo_label}拆解")
+    if is_au_report:
+        st.markdown('<div class="section-caption">澳洲地理维度按 state_code 展示，州归属优先使用 postcode 匹配；未匹配时再看地址里的州缩写、city/region 线索和已推断 business_city。州内可下钻查看原 city 分类。</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="section-caption">地理维度仅展示 business_city 层级，并沿用 Wechat-Pay-ANZ-MAP 的城市匹配与标准化逻辑。</div>', unsafe_allow_html=True)
     render_insights(insights, "region", "执行与策略备注")
     region_plot = region.copy()
-    if "business_city" not in region_plot and "city" in region_plot:
-        region_plot["business_city"] = region_plot["city"]
+    if geo_dim_col not in region_plot:
+        if geo_dim_col == "business_city" and "city" in region_plot:
+            region_plot[geo_dim_col] = region_plot["city"]
+        elif geo_dim_col == "business_state" and "state_code" in region_plot:
+            region_plot[geo_dim_col] = region_plot["state_code"]
+        else:
+            region_plot[geo_dim_col] = "Unclassified"
     region_plot["gmv_cny"] = pd.to_numeric(region_plot["gmv_cny"], errors="coerce").fillna(0)
     region_plot["txn_count"] = pd.to_numeric(region_plot["txn_count"], errors="coerce").fillna(0)
     region_plot["active_merchants"] = pd.to_numeric(region_plot["active_merchants"], errors="coerce").fillna(0)
     region_plot = region_plot.sort_values("txn_count", ascending=False)
-    top_n = st.slider("展示城市数", min_value=5, max_value=min(20, max(len(region_plot), 5)), value=min(10, len(region_plot)), step=1)
+    top_n = st.slider(f"展示{geo_label}数", min_value=5, max_value=min(20, max(len(region_plot), 5)), value=min(10, len(region_plot)), step=1)
     city_total = float(region_plot["txn_count"].sum())
     region_plot["txn_share"] = region_plot["txn_count"] / city_total if city_total else 0
     chart_region = region_plot.head(top_n).sort_values("txn_count", ascending=True)
     top_share = float(region_plot.head(top_n)["txn_count"].sum() / city_total) if city_total else float("nan")
-    unmatched = region_plot[region_plot["business_city"].astype(str).isin(["未分类", "Unclassified"])]
+    top2_share = float(region_plot.head(2)["txn_count"].sum() / city_total) if city_total else float("nan")
+    top2_label = " + ".join(region_plot.head(2)[geo_dim_col].astype(str).tolist()) if len(region_plot) >= 2 else "前 2"
+    match_rate_value = float(
+        (region_plot[geo_match_col] * region_plot["txn_count"]).sum() / city_total
+    ) if city_total and geo_match_col in region_plot else float("nan")
+    unmatched = region_plot[region_plot[geo_dim_col].astype(str).isin(["未分类", "Unclassified"])]
     unmatched_share = float(unmatched["txn_count"].sum() / city_total) if city_total and not unmatched.empty else float("nan")
     left, right = st.columns([1.2, 1])
     with left:
         fig = px.bar(
             chart_region,
             x="txn_count",
-            y="business_city",
+            y=geo_dim_col,
             color="gmv_cny",
             orientation="h",
-            title=f"交易笔数前 {top_n} 城市",
-            labels={"txn_count": "交易笔数", "business_city": "", "gmv_cny": "GMV（元）"},
+            title=f"交易笔数前 {top_n} {geo_label}",
+            labels={"txn_count": "交易笔数", geo_dim_col: "", "gmv_cny": "GMV（元）"},
             color_continuous_scale=["#E0F2FE", "#0369A1"],
             custom_data=["gmv_cny", "active_merchants", "txn_share"],
         )
@@ -1795,35 +1827,37 @@ with tabs[2]:
         city_cards = []
         if not region_plot.empty:
             top_city = region_plot.iloc[0]
-            top_city_name = str(top_city.get("business_city", "头部城市"))
+            top_city_name = str(top_city.get(geo_dim_col, geo_top_default))
             top_city_share = float(top_city.get("txn_count", 0) / city_total) if city_total else float("nan")
             city_cards.append(
                 {
-                    "kicker": "城市集中度",
+                    "kicker": f"{geo_label}集中度",
                     "title": f"{top_city_name} 是交易基本盘",
                     "body": (
                         f"{top_city_name} 贡献 2026 Labour 交易笔数的 {fmt_pct(top_city_share)}，"
-                        f"前 {top_n} 城市合计贡献 {fmt_pct(top_share)}。城市结构按交易频次看依然集中，头部城市变化会明显影响总盘。"
+                        f"前 {top_n} {geo_label}合计贡献 {fmt_pct(top_share)}。{geo_label}结构按交易频次看依然集中，头部{geo_label}变化会明显影响总盘。"
                     ),
                 }
             )
 
-            destination = region_plot[region_plot["business_city"].astype(str).eq("Queenstown")]
+            destination = pd.DataFrame()
+            if not is_au_report:
+                destination = region_plot[region_plot[geo_dim_col].astype(str).eq("Queenstown")]
             if destination.empty:
                 destination = region_plot[
-                    ~region_plot["business_city"].astype(str).isin(["Auckland", "未分类", "Unclassified"])
+                    ~region_plot[geo_dim_col].astype(str).isin(["Auckland", "未分类", "Unclassified"])
                 ].head(1)
             if not destination.empty:
                 dest = destination.iloc[0]
-                dest_city = str(dest.get("business_city", "Destination city"))
+                dest_city = str(dest.get(geo_dim_col, geo_top_default))
                 city_cards.append(
                     {
-                        "kicker": "假期目的地",
+                        "kicker": "假期目的地" if not is_au_report else "州别变化",
                         "title": f"{dest_city} 的假期 uplift 更明显",
                         "body": (
                             f"{dest_city} GMV 同比 {fmt_signed_pct(dest.get('yoy_gmv_growth'))}，"
                             f"日均 GMV 较 4 月 baseline {fmt_signed_pct(dest.get('pre_uplift'))}。"
-                            "这类目的地城市更能体现假期和游客消费场景。"
+                            + ("这类目的地城市更能体现假期和游客消费场景。" if not is_au_report else "州维度用于避免 suburb 被误当作城市导致的份额偏差。")
                         ),
                     }
                 )
@@ -1832,10 +1866,10 @@ with tabs[2]:
                 city_cards.append(
                     {
                         "kicker": "数据边界",
-                        "title": "未分类城市需要单独看待",
+                        "title": f"未分类{geo_label}需要单独看待",
                         "body": (
-                            f"未分类交易笔数占 {fmt_pct(unmatched_share)}。它反映地址未能稳定匹配到 business_city，"
-                            "不应归入某个具体城市，但会影响城市份额解读。"
+                            f"未分类交易笔数占 {fmt_pct(unmatched_share)}。它反映地址未能稳定匹配到{geo_label}维度，"
+                            f"不应归入某个具体{geo_label}，但会影响{geo_label}份额解读。"
                         ),
                     }
                 )
@@ -1851,20 +1885,75 @@ with tabs[2]:
                     "</div>"
                 )
             card_html.append("</div>")
-            st.markdown("#### 城市洞察")
+            st.markdown(f"#### {geo_label}洞察")
             st.markdown("".join(card_html), unsafe_allow_html=True)
     with right:
-        st.metric(f"前 {top_n} 城市交易笔数占比", fmt_pct(top_share))
+        if is_au_report:
+            st.metric(f"{top2_label} 交易笔数占比", fmt_pct(top2_share))
+            st.metric("州匹配率", fmt_pct(match_rate_value))
+        else:
+            st.metric(f"前 {top_n} {geo_label}交易笔数占比", fmt_pct(top_share))
         if not unmatched.empty:
-            st.metric("未分类城市交易笔数占比", fmt_pct(unmatched_share))
-        city_display = region_plot.drop(columns=["geo_match_rate"], errors="ignore").copy()
+            st.metric(f"未分类{geo_label}交易笔数占比", fmt_pct(unmatched_share))
+        city_display = region_plot.drop(columns=[geo_match_col], errors="ignore").copy()
         city_display["gmv_cny"] = city_display["gmv_cny"].map(lambda value: f"{float(value):,.0f}")
         city_display["txn_count"] = city_display["txn_count"].map(lambda value: f"{float(value):,.0f}")
         city_display["active_merchants"] = city_display["active_merchants"].map(lambda value: f"{float(value):,.0f}")
-        for col in ["txn_share", "yoy_gmv_growth", "pre_uplift"]:
+        for col in ["txn_share", "yoy_gmv_growth", "pre_uplift", "txn_yoy_growth", "pre_txn_uplift"]:
             if col in city_display:
                 city_display[col] = city_display[col].apply(fmt_pct)
         st.dataframe(display_table(city_display), hide_index=True, width="stretch")
+
+    if is_au_report and not geography_drilldown.empty:
+        st.markdown("#### 州内城市下钻")
+        st.markdown('<div class="section-caption">下钻城市优先来自同一套 postcode/地址维表结果；地址无法识别时，再用地址文本和商户名里的城市线索补救，且必须与当前州一致。</div>', unsafe_allow_html=True)
+        drill = geography_drilldown.copy()
+        drill["gmv_cny"] = pd.to_numeric(drill["gmv_cny"], errors="coerce").fillna(0)
+        drill["txn_count"] = pd.to_numeric(drill["txn_count"], errors="coerce").fillna(0)
+        drill["active_merchants"] = pd.to_numeric(drill["active_merchants"], errors="coerce").fillna(0)
+        state_options = (
+            drill.groupby("business_state", as_index=False)
+            .agg(txn_count=("txn_count", "sum"))
+            .sort_values("txn_count", ascending=False)["business_state"]
+            .astype(str)
+            .tolist()
+        )
+        default_state = state_options[0] if state_options else "NSW"
+        selected_state = st.selectbox("选择州", state_options, index=state_options.index(default_state) if default_state in state_options else 0)
+        selected_drill = drill[drill["business_state"].astype(str).eq(selected_state)].sort_values("txn_count", ascending=False).copy()
+        if not selected_drill.empty:
+            state_total_txn = float(selected_drill["txn_count"].sum())
+            selected_drill["state_txn_share"] = selected_drill["txn_count"] / state_total_txn if state_total_txn else 0
+            chart_drill = selected_drill.head(15).sort_values("txn_count", ascending=True)
+            fig = px.bar(
+                chart_drill,
+                x="txn_count",
+                y="business_city",
+                color="gmv_cny",
+                orientation="h",
+                title=f"{selected_state} 州内城市交易笔数",
+                labels={"txn_count": "交易笔数", "business_city": "", "gmv_cny": "GMV（元）"},
+                color_continuous_scale=["#E0F2FE", "#0369A1"],
+                custom_data=["gmv_cny", "active_merchants", "state_txn_share"],
+            )
+            fig.update_traces(
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "交易笔数：%{x:,.0f}<br>"
+                    "GMV：RMB %{customdata[0]:,.0f}<br>"
+                    "活跃商户数：%{customdata[1]:,.0f}<br>"
+                    "州内交易笔数占比：%{customdata[2]:.1%}<extra></extra>"
+                )
+            )
+            st.plotly_chart(chart_layout(fig, height=430), width="stretch")
+            drill_display = selected_drill.drop(columns=["state_match_rate", "geo_match_rate"], errors="ignore").copy()
+            drill_display["gmv_cny"] = drill_display["gmv_cny"].map(lambda value: f"{float(value):,.0f}")
+            drill_display["txn_count"] = drill_display["txn_count"].map(lambda value: f"{float(value):,.0f}")
+            drill_display["active_merchants"] = drill_display["active_merchants"].map(lambda value: f"{float(value):,.0f}")
+            for col in ["state_txn_share", "state_gmv_share", "yoy_gmv_growth", "pre_uplift", "txn_yoy_growth", "pre_txn_uplift"]:
+                if col in drill_display:
+                    drill_display[col] = drill_display[col].apply(fmt_pct)
+            st.dataframe(display_table(drill_display), hide_index=True, width="stretch")
 
 with tabs[3]:
     st.subheader("行业分布")
