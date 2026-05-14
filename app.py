@@ -36,7 +36,7 @@ LEGACY_ACCESS_DIGEST_ENV = "_".join(["NZ", "REPORT", "PASS" + "WORD", "SHA" + "2
 ACCESS_SECRET_NAMES = (ACCESS_ENV, LEGACY_ACCESS_ENV)
 ACCESS_DIGEST_SECRET_NAMES = (ACCESS_DIGEST_ENV, LEGACY_ACCESS_DIGEST_ENV)
 DEFAULT_DATA_PROJECT = "anz-labour-day-2026"
-APP_DATA_CACHE_BUSTER = "2026-05-14-geo-table-txn-priority-v1"
+APP_DATA_CACHE_BUSTER = "2026-05-14-geo-active-merchant-growth-v1"
 DATASET_DIRS = {
     "processed": PROCESSED_DIR,
     "processed_au": PROCESSED_AU_DIR,
@@ -157,6 +157,8 @@ COLUMN_LABELS_ZH = {
     "pre_uplift": "GMV 较基线提升",
     "txn_yoy_growth": "交易笔数同比",
     "pre_txn_uplift": "交易笔数较基线提升",
+    "active_merchants_yoy_growth": "活跃商户同比",
+    "pre_active_merchants_uplift": "活跃商户较基线提升",
     "major_industry": "行业大类",
     "industry": "行业",
     "mcc_match_rate": "MCC 匹配率",
@@ -928,6 +930,8 @@ def build_au_state_summary_from_city_region(region_frame: pd.DataFrame) -> pd.Da
             "pre_uplift": "gmv_cny",
             "txn_yoy_growth": "txn_count",
             "pre_txn_uplift": "txn_count",
+            "active_merchants_yoy_growth": "active_merchants",
+            "pre_active_merchants_uplift": "active_merchants",
         }.items():
             if col in group:
                 row[col] = weighted_average(group, col, weight_col)
@@ -2003,7 +2007,15 @@ with tabs[2]:
         city_display["gmv_cny"] = city_display["gmv_cny"].map(lambda value: f"{float(value):,.0f}")
         city_display["txn_count"] = city_display["txn_count"].map(lambda value: f"{float(value):,.0f}")
         city_display["active_merchants"] = city_display["active_merchants"].map(lambda value: f"{float(value):,.0f}")
-        for col in ["txn_share", "yoy_gmv_growth", "pre_uplift", "txn_yoy_growth", "pre_txn_uplift"]:
+        for col in [
+            "txn_share",
+            "yoy_gmv_growth",
+            "pre_uplift",
+            "txn_yoy_growth",
+            "pre_txn_uplift",
+            "active_merchants_yoy_growth",
+            "pre_active_merchants_uplift",
+        ]:
             if col in city_display:
                 city_display[col] = city_display[col].apply(fmt_pct)
         city_display = order_display_columns(
@@ -2015,6 +2027,8 @@ with tabs[2]:
                 "pre_txn_uplift",
                 "txn_share",
                 "active_merchants",
+                "active_merchants_yoy_growth",
+                "pre_active_merchants_uplift",
                 "gmv_cny",
                 "yoy_gmv_growth",
                 "pre_uplift",
@@ -2069,7 +2083,16 @@ with tabs[2]:
             drill_display["gmv_cny"] = drill_display["gmv_cny"].map(lambda value: f"{float(value):,.0f}")
             drill_display["txn_count"] = drill_display["txn_count"].map(lambda value: f"{float(value):,.0f}")
             drill_display["active_merchants"] = drill_display["active_merchants"].map(lambda value: f"{float(value):,.0f}")
-            for col in ["state_txn_share", "state_gmv_share", "yoy_gmv_growth", "pre_uplift", "txn_yoy_growth", "pre_txn_uplift"]:
+            for col in [
+                "state_txn_share",
+                "state_gmv_share",
+                "yoy_gmv_growth",
+                "pre_uplift",
+                "txn_yoy_growth",
+                "pre_txn_uplift",
+                "active_merchants_yoy_growth",
+                "pre_active_merchants_uplift",
+            ]:
                 if col in drill_display:
                     drill_display[col] = drill_display[col].apply(fmt_pct)
             drill_display = order_display_columns(
@@ -2081,6 +2104,8 @@ with tabs[2]:
                     "pre_txn_uplift",
                     "state_txn_share",
                     "active_merchants",
+                    "active_merchants_yoy_growth",
+                    "pre_active_merchants_uplift",
                     "gmv_cny",
                     "yoy_gmv_growth",
                     "pre_uplift",
