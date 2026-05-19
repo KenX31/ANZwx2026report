@@ -2421,6 +2421,11 @@ with tabs[5]:
         reactivated_count = float(reactivated["merchant_count"].sum() if not reactivated.empty else 0)
         new_coverage_count = float(new_coverage["merchant_count"].sum() if not new_coverage.empty else 0)
         churned_count = float(churned["merchant_count"].sum() if not churned.empty else 0)
+        current_segments["current_merchant_count_share"] = np.where(
+            current_active_total > 0,
+            pd.to_numeric(current_segments["merchant_count"], errors="coerce").fillna(0.0) / current_active_total,
+            np.nan,
+        )
 
         metric_cols = st.columns(4)
         with metric_cols[0]:
@@ -2434,7 +2439,7 @@ with tabs[5]:
 
         share_long = current_segments.melt(
             id_vars=["segment_name", "sort_order"],
-            value_vars=["current_gmv_share", "current_txn_share"],
+            value_vars=["current_gmv_share", "current_txn_share", "current_merchant_count_share"],
             var_name="metric",
             value_name="share",
         )
@@ -2442,6 +2447,7 @@ with tabs[5]:
             {
                 "current_gmv_share": "2026 GMV 占比",
                 "current_txn_share": "2026 交易笔数占比",
+                "current_merchant_count_share": "2026 活跃商户数占比",
             }
         )
         fig = px.bar(
@@ -2450,9 +2456,9 @@ with tabs[5]:
             y="share",
             color="metric",
             barmode="group",
-            title="2026 五一商户分组贡献",
+            title="2026 五一商户分组贡献与活跃构成",
             labels={"segment_name": "", "share": "本期占比", "metric": ""},
-            color_discrete_sequence=["#0F766E", "#2563EB"],
+            color_discrete_sequence=["#0F766E", "#2563EB", "#D97706"],
         )
         fig.update_yaxes(tickformat=".0%")
         st.plotly_chart(chart_layout(fig, height=390), width="stretch")
